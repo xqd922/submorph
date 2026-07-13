@@ -1,0 +1,53 @@
+import { describe, expect, it } from "vitest";
+import { convertSubscriptionText, ConversionError } from "./index";
+
+const vmess = `vmess://${btoa(JSON.stringify({
+	v: "2",
+	ps: "VMess WS",
+	add: "vm.example.com",
+	port: "443",
+	id: "00000000-0000-4000-8000-000000000001",
+	aid: "0",
+	scy: "auto",
+	net: "ws",
+	host: "cdn.example.com",
+	path: "/ws",
+	tls: "tls",
+	sni: "vm.example.com",
+}))}`;
+
+const lines = [
+	"ss://YWVzLTI1Ni1nY206cGFzc3dvcmQ@ss.example.com:8388#Shadowsocks",
+	vmess,
+	"vless://00000000-0000-4000-8000-000000000002@vl.example.com:443?encryption=none&security=tls&type=grpc&serviceName=edge&sni=vl.example.com#VLESS",
+	"trojan://secret@tr.example.com:443?security=tls&type=ws&path=%2Fsocket&sni=tr.example.com#Trojan",
+];
+
+describe("convertSubscriptionText", () => {
+	it("renders four core protocols as a Mihomo provider", () => {
+		const result = convertSubscriptionText(lines.join("\n"), "mihomo-provider");
+		expect(result.rendered).toBe(4);
+		expect(result.content).toContain("type: ss");
+		expect(result.content).toContain("type: vmess");
+		expect(result.content).toContain("type: vless");
+		expect(result.content).toContain("type: trojan");
+	});
+
+	it("accepts a Base64-wrapped URI list for v2rayNG", () => {
+		const source = btoa(lines.slice(0, 2).join("\n"));
+		const result = convertSubscriptionText(source, "v2rayng");
+		expect(atob(result.content)).toContain("ss://");
+		expect(atob(result.content)).toContain("vmess://");
+	});
+
+	it("reads the proxies root from Mihomo YAML", () => {
+		const result = convertSubscriptionText(`proxies:\n  - name: YAML SS\n    type: ss\n    server: yaml.example.com\n    port: 443\n    cipher: aes-128-gcm\n    password: secret\n`, "preview");
+		expect(result.rendered).toBe(1);
+		expect(JSON.parse(result.content).nodes[0].protocol).toBe("ss");
+	});
+
+	it("rejects XHTTP when the target cannot express it", () => {
+		const source = "vless://00000000-0000-4000-8000-000000000003@x.example.com:443?encryption=none&security=tls&type=xhttp&path=%2F&sni=x.example.com#XHTTP";
+		expect(() => convertSubscriptionText(source, "singbox")).toThrowError(ConversionError);
+	});
+});

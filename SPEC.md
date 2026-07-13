@@ -128,7 +128,8 @@ chunks. Public visitors must not download administration tables or charts.
 | GET | `/s/:id` | Resolve and convert a short link |
 | GET | `/api/health` | Return service health |
 
-`target` may be `auto`, `clash`, `singbox`, `v2rayng`, or `preview`. When it is
+`target` may be `auto`, `mihomo`, `mihomo-provider`, `singbox`, `v2rayng`, or
+`preview`. `clash` remains a compatibility alias for `mihomo`. When target is
 absent or `auto`, the server selects an output from the request User-Agent.
 
 ### Administration API
@@ -170,7 +171,7 @@ ProxyNode
 and protocol-specific options. Renderers map the canonical model to each
 external client schema.
 
-Supported protocols for the first release:
+Planned protocols through version 1.0:
 
 - Shadowsocks
 - VMess
@@ -190,12 +191,22 @@ Supported subscription inputs:
 - Clash-compatible YAML subscriptions.
 - GitHub Gist documents containing supported sources.
 
-Supported outputs:
+Output targets:
 
-- Mihomo / Clash YAML.
-- sing-box JSON.
+- Mihomo full-profile YAML.
+- Mihomo provider-only YAML.
+- sing-box 1.13 JSON remote profile.
 - v2rayNG-compatible Base64 subscription.
 - Browser preview.
+
+Version 0.1 supports Shadowsocks, VMess, Trojan, and VLESS only. Later
+protocols are not release-supported until their protocol variants are marked
+`exact` or explicitly accepted as `lossy` in `KERNEL_COMPATIBILITY.md`.
+
+Parsing a protocol is not sufficient to claim output support. Every
+protocol/transport/TLS combination is classified as `exact`, `lossy`,
+`unsupported`, or `unverified` per target. Silent downgrade, such as Reality
+to ordinary TLS or XHTTP to WebSocket, is forbidden.
 
 ## 8. Conversion Pipeline
 
@@ -323,27 +334,43 @@ No real subscription credentials are committed as fixtures.
 
 ## 13. Acceptance Criteria
 
+### Version 0.1
+
 - `pnpm test`, `pnpm typecheck`, and `pnpm build` pass.
-- All eight protocols parse valid fixtures and reject invalid fixtures.
-- All four outputs render valid non-empty configurations.
+- Shadowsocks, VMess, Trojan, and VLESS MVP variants parse valid fixtures and
+  reject invalid fixtures.
+- Mihomo, Mihomo provider, sing-box, v2rayNG, and preview outputs pass their
+  target-specific validation for supported matrix entries.
 - `/sub?url=...` remains compatible with existing client links.
 - Public and administration frontend chunks are separate.
-- Administration APIs are unreachable without Cloudflare Access.
 - Full subscription URLs do not appear in conversion events or logs.
-- D1 migrations apply locally and to a clean remote database.
 - The application deploys as one Worker with Workers Assets.
+
+### Version 0.2
+
+- Administration APIs are unreachable without Cloudflare Access.
+- D1 migrations apply locally and to a clean remote database.
+- Encrypted short links, cache, rate limiting, and audit tests pass.
+
+### Version 1.0
+
+- All planned protocols have explicit target capability states.
+- Only `exact` and approved `lossy` matrix entries count as supported.
+- Fixed Mihomo and sing-box binaries validate generated fixtures, and the
+  pinned v2rayNG version passes import smoke tests.
 
 ## 14. Implementation Order
 
-1. Generate the official Cloudflare full-stack template and add Kumo.
-2. Configure D1, KV, Access settings, secrets, and local development bindings.
-3. Implement the canonical model and a Shadowsocks-to-Clash vertical slice.
-4. Add remaining protocols with fixtures.
-5. Add subscription loaders, policies, and remaining renderers.
+1. Generate the official Cloudflare full-stack template and configure the
+   Custom Domain.
+2. Implement the canonical model and a Shadowsocks-to-Mihomo vertical slice.
+3. Add safe remote loading and subscription content parsing.
+4. Add VMess, Trojan, and VLESS using the compatibility matrix.
+5. Add Mihomo provider, sing-box 1.13, v2rayNG, and preview renderers.
 6. Build the public converter workflow.
-7. Add persistence, short links, and administration APIs.
-8. Build the administration panel.
-9. Run compatibility, security, browser, and deployment checks.
+7. Configure D1, KV, Access, secrets, short links, and administration APIs.
+8. Build the administration panel and only then add later protocols.
+9. Run pinned-kernel, security, browser, client, and deployment checks.
 
 The legacy project is a behavioral reference only. New SubMorph modules must
 not import from it.

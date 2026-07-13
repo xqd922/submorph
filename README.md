@@ -1,90 +1,68 @@
-# React + Vite + Hono + Cloudflare Workers
+# SubMorph
 
-[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/cloudflare/templates/tree/main/vite-react-template)
+Cloudflare-native proxy subscription converter for Mihomo, sing-box, and v2rayNG.
 
-This template provides a minimal setup for building a React application with TypeScript and Vite, designed to run on Cloudflare Workers. It features hot module replacement, ESLint integration, and the flexibility of Workers deployments.
+Production: `https://submorph.xqd.pp.ua`
 
-![React + TypeScript + Vite + Cloudflare Workers](https://imagedelivery.net/wSMYJvS3Xw-n339CbDyDIA/fc7b4b62-442b-4769-641b-ad4422d74300/public)
+## Current Features
 
-<!-- dash-content-start -->
+- Parse Shadowsocks, VMess, VLESS, and Trojan share links.
+- Read plain URI lists, Base64 URI lists, and Mihomo YAML `proxies`.
+- Render Mihomo profiles, Mihomo providers, sing-box 1.13 profiles, v2rayNG subscriptions, and redacted previews.
+- Convert remote HTTP/HTTPS subscriptions with redirect, timeout, UTF-8, private-address, and 10 MiB limits.
+- Responsive React interface with copy, download, statistics, and warning states.
+- No browser persistence and no silent protocol downgrade.
 
-🚀 Supercharge your web development with this powerful stack:
+## API
 
-- [**React**](https://react.dev/) - A modern UI library for building interactive interfaces
-- [**Vite**](https://vite.dev/) - Lightning-fast build tooling and development server
-- [**Hono**](https://hono.dev/) - Ultralight, modern backend framework
-- [**Cloudflare Workers**](https://developers.cloudflare.com/workers/) - Edge computing platform for global deployment
-
-### ✨ Key Features
-
-- 🔥 Hot Module Replacement (HMR) for rapid development
-- 📦 TypeScript support out of the box
-- 🛠️ ESLint configuration included
-- ⚡ Zero-config deployment to Cloudflare's global network
-- 🎯 API routes with Hono's elegant routing
-- 🔄 Full-stack development setup
-- 🔎 Built-in Observability to monitor your Worker
-
-Get started in minutes with local development or deploy directly via the Cloudflare dashboard. Perfect for building modern, performant web applications at the edge.
-
-<!-- dash-content-end -->
-
-## Getting Started
-
-To start a new project with this template, run:
-
-```bash
-npm create cloudflare@latest -- --template=cloudflare/templates/vite-react-template
+```text
+GET  /api/health
+GET  /sub?url=...&target=mihomo
+POST /api/convert
 ```
 
-A live deployment of this template is available at:
-[https://react-vite-template.templates.workers.dev](https://react-vite-template.templates.workers.dev)
+`POST /api/convert` body:
+
+```json
+{
+  "source": "ss://...",
+  "target": "preview"
+}
+```
+
+Targets:
+
+```text
+mihomo
+mihomo-provider
+singbox
+v2rayng
+preview
+```
+
+`clash` remains an alias for `mihomo` on `GET /sub`.
 
 ## Development
 
-Install dependencies:
-
-```bash
-npm install
+```powershell
+pnpm install
+pnpm run dev
+pnpm run test
+pnpm run lint
+pnpm run check
 ```
 
-Start the development server with:
+## Deployment
 
-```bash
-npm run dev
+```powershell
+pnpm run deploy
 ```
 
-Your application will be available at [http://localhost:5173](http://localhost:5173).
+The Worker deploys to the Custom Domain configured in `wrangler.json`.
 
-## Production
+## Project Documents
 
-Build your project for production:
-
-```bash
-npm run build
-```
-
-Preview your build locally:
-
-```bash
-npm run preview
-```
-
-Deploy your project to Cloudflare Workers:
-
-```bash
-npm run build && npm run deploy
-```
-
-Monitor your workers:
-
-```bash
-npx wrangler tail
-```
-
-## Additional Resources
-
-- [Cloudflare Workers Documentation](https://developers.cloudflare.com/workers/)
-- [Vite Documentation](https://vitejs.dev/guide/)
-- [React Documentation](https://reactjs.org/)
-- [Hono Documentation](https://hono.dev/)
+- `SPEC.md` — product specification.
+- `OUTLINE.md` — implementation roadmap.
+- `KERNEL_COMPATIBILITY.md` — pinned kernel versions and compatibility matrix.
+- `TEST_LOG.md` — deployment and troubleshooting record.
