@@ -17,6 +17,7 @@ function App() {
 	const [error, setError] = useState("");
 	const [busy, setBusy] = useState(false);
 	const [copied, setCopied] = useState(false);
+	const [shortLink, setShortLink] = useState("");
 	const [health, setHealth] = useState("checking");
 	const targetLabel = targets.find(([value]) => value === target)?.[1] ?? target;
 
@@ -30,7 +31,7 @@ function App() {
 		event.preventDefault();
 		const input = source.trim();
 		if (!input) return setError("Please enter a subscription URL or paste subscription content.");
-		setBusy(true); setError(""); setWarnings([]); setCopied(false);
+		setBusy(true); setError(""); setWarnings([]); setCopied(false); setShortLink("");
 		try {
 			const response = mode === "url" ? await fetch(`/sub?url=${encodeURIComponent(input)}&target=${target}`) : await fetch("/api/convert", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ source: input, target }) });
 			if ((response.headers.get("content-type") ?? "").includes("application/json")) {
@@ -53,6 +54,15 @@ function App() {
 	}
 
 	async function copy() { await navigator.clipboard.writeText(result); setCopied(true); window.setTimeout(() => setCopied(false), 1600); }
+	async function createLink() {
+		setError("");
+		try {
+			const response = await fetch("/api/links", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ source: source.trim(), target }) });
+			const body = await response.json() as { url?: string; error?: { message?: string } };
+			if (!response.ok || !body.url) throw new Error(body.error?.message || "Could not create short link.");
+			setShortLink(body.url);
+		} catch (caught) { setError(caught instanceof Error ? caught.message : "Could not create short link."); }
+	}
 	function download() { const extension = target === "singbox" || target === "preview" ? "json" : target === "v2rayng" ? "txt" : "yaml"; const url = URL.createObjectURL(new Blob([result])); const anchor = document.createElement("a"); anchor.href = url; anchor.download = `submorph-${target}.${extension}`; anchor.click(); URL.revokeObjectURL(url); }
 
 	return <div className="page">
@@ -72,7 +82,7 @@ function App() {
 				</form>
 				<aside className="panel result-panel" aria-live="polite">
 					<div className="title-row"><div><small>03 / RESULT</small><h2>{result ? "Ready to use" : "Waiting for input"}</h2></div>{result && <b className="ready">Ready</b>}</div>
-					{result ? <><div className="stats">{Object.entries(stats).map(([name, value]) => <div key={name}><strong>{value}</strong><span>{name}</span></div>)}</div>{warnings.length > 0 && <div className="warning"><strong>Conversion notes</strong>{warnings.map((warning, index) => <span key={index}>{warning}</span>)}</div>}<div className="tools"><span>{targetLabel} / {result.length.toLocaleString()} chars</span><div><button type="button" onClick={copy}>{copied ? "Copied" : "Copy"}</button><button type="button" onClick={download}>Download</button></div></div><pre tabIndex={0}>{result}</pre></> : <div className="empty"><div className="sheets"><i /><i /><i /></div><h3>Your converted profile appears here</h3><p>Enter a source and choose a target. The result stays ready to copy or download.</p></div>}
+					{result ? <><div className="stats">{Object.entries(stats).map(([name, value]) => <div key={name}><strong>{value}</strong><span>{name}</span></div>)}</div>{warnings.length > 0 && <div className="warning"><strong>Conversion notes</strong>{warnings.map((warning, index) => <span key={index}>{warning}</span>)}</div>}<div className="tools"><span>{targetLabel} / {result.length.toLocaleString()} chars</span><div><button type="button" onClick={createLink}>Short link</button><button type="button" onClick={copy}>{copied ? "Copied" : "Copy"}</button><button type="button" onClick={download}>Download</button></div></div>{shortLink && <div className="warning"><strong>Encrypted short link</strong><span>{shortLink}</span></div>}<pre tabIndex={0}>{result}</pre></> : <div className="empty"><div className="sheets"><i /><i /><i /></div><h3>Your converted profile appears here</h3><p>Enter a source and choose a target. The result stays ready to copy or download.</p></div>}
 				</aside>
 			</section>
 			<section className="features" id="features"><small>WHY SUBMORPH</small><h2>Simple by design.<br />Honest by default.</h2><div><article><b>01</b><h3>Kernel-aware</h3><p>Each target is rendered for its actual capabilities instead of receiving guessed fields.</p></article><article><b>02</b><h3>Private by default</h3><p>No local storage and no third-party analytics receive your subscription content.</p></article><article><b>03</b><h3>Visible outcomes</h3><p>Parsed, output and skipped counts make partial conversion immediately clear.</p></article></div></section>

@@ -11,6 +11,9 @@ Production: `https://submorph.xqd.pp.ua`
 - Render Mihomo profiles, Mihomo providers, sing-box 1.13 profiles, v2rayNG subscriptions, and redacted previews.
 - Convert remote HTTP/HTTPS subscriptions with redirect, timeout, UTF-8, private-address, and 10 MiB limits.
 - Responsive React interface with copy, download, statistics, and warning states.
+- Encrypted reusable short links backed by D1 and Web Crypto AES-GCM.
+- Five-view administration dashboard for events, links, blocked sources, and audit records.
+- Five-minute KV cache for complete successful conversions.
 - No browser persistence and no silent protocol downgrade.
 
 ## API
@@ -19,6 +22,9 @@ Production: `https://submorph.xqd.pp.ua`
 GET  /api/health
 GET  /sub?url=...&target=mihomo
 POST /api/convert
+POST /api/links
+GET  /s/:id
+GET  /api/admin/*
 ```
 
 `POST /api/convert` body:
@@ -58,7 +64,9 @@ pnpm run check
 pnpm run deploy
 ```
 
-The Worker deploys to the Custom Domain configured in `wrangler.json`.
+The Worker deploys to the Custom Domain configured in `wrangler.json`. The
+administrator token is stored outside the repository in
+`%USERPROFILE%\.submorph\admin-token.txt` on the deployment machine.
 
 ## Project Documents
 

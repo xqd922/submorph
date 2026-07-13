@@ -5,13 +5,13 @@ const ss = "ss://YWVzLTI1Ni1nY206cGFzc3dvcmQ@ss.example.com:8388#Demo";
 
 describe("worker routes", () => {
 	it("reports health", async () => {
-		const response = await app.request("/api/health");
+		const response = await app.request("/api/health", undefined, {});
 		expect(response.status).toBe(200);
-		expect(await response.json()).toEqual({ status: "ok", version: "0.1.0" });
+		expect(await response.json()).toEqual({ status: "ok", version: "0.2.0" });
 	});
 
 	it("converts a proxy URI through GET /sub", async () => {
-		const response = await app.request(`/sub?target=mihomo-provider&url=${encodeURIComponent(ss)}`);
+		const response = await app.request(`/sub?target=mihomo-provider&url=${encodeURIComponent(ss)}`, undefined, {});
 		expect(response.status).toBe(200);
 		expect(response.headers.get("x-submorph-rendered")).toBe("1");
 		expect(await response.text()).toContain("type: ss");
@@ -22,7 +22,7 @@ describe("worker routes", () => {
 			method: "POST",
 			headers: { "Content-Type": "application/json" },
 			body: JSON.stringify({ source: ss, target: "preview" }),
-		});
+		}, {});
 		expect(response.status).toBe(200);
 		const body = await response.json() as { count: number };
 		expect(body.count).toBe(1);

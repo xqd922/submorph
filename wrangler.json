@@ -7,6 +7,19 @@
 		"enabled": true
 	},
 	"upload_source_maps": true,
+	"kv_namespaces": [
+		{
+			"binding": "SUBMORPH_STORE",
+			"id": "ab1252af3b494ab88d8b3b941863cf73"
+		}
+	],
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "submorph-db",
+			"database_id": "221bf55c-9836-4a7f-9884-e996828a318f"
+		}
+	],
 	"routes": [
 		{
 			"pattern": "submorph.xqd.pp.ua",
