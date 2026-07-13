@@ -123,7 +123,7 @@ chunks. Public visitors must not download administration tables or charts.
 
 | Method | Path | Purpose |
 | --- | --- | --- |
-| GET | `/sub?url=...&target=...` | Convert a subscription |
+| GET | `/sub?url=...` | Convert a subscription with automatic client detection |
 | POST | `/api/links` | Create or reuse a short link |
 | GET | `/s/:id` | Resolve and convert a short link |
 | GET | `/api/health` | Return service health |
@@ -297,7 +297,7 @@ ASSETS                   Workers Assets binding
 The root page is the working converter, not a marketing landing page. It has:
 
 - A sensitive subscription URL input.
-- An output selector with automatic detection as the default.
+- Automatic output selection performed entirely by the Worker; the public UI does not expose kernel or format choices.
 - A convert command.
 - A generated subscription URL with copy action.
 - Optional short-link creation after conversion.

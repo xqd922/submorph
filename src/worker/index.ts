@@ -60,8 +60,11 @@ app.post("/api/links", async (context) => {
 	const body = await readJsonObject(context);
 	if (body instanceof Response) return body;
 	const source = typeof body.source === "string" ? body.source.trim() : "";
-	const target = normalizeTarget(typeof body.target === "string" ? body.target : undefined);
-	if (!source || !target) return errorResponse(context, "INVALID_INPUT", "source and target are required", 400);
+	if (body.target !== undefined && typeof body.target !== "string")
+		return errorResponse(context, "UNSUPPORTED_TARGET", "target must be a string", 400);
+	const target = normalizeStoredTarget(typeof body.target === "string" ? body.target : undefined);
+	if (!source) return errorResponse(context, "INVALID_INPUT", "source is required", 400);
+	if (!target) return errorResponse(context, "UNSUPPORTED_TARGET", "Unsupported target", 400);
 	const resources = storage(context);
 	if (!resources) return errorResponse(context, "STORAGE_UNAVAILABLE", "Short links are not configured", 503);
 	const link = await createShortLink(resources.db, resources, { source, outputTarget: target });
@@ -213,14 +216,28 @@ async function handleConversion(
 	}
 }
 
+const SING_BOX_USER_AGENT = /sing-box/i;
+const V2RAY_USER_AGENT = /v2ray(?:ng|n)/i;
+const MIHOMO_USER_AGENT = /mihomo|clash(?:\.meta|x)?|stash/i;
+
+export function targetForUserAgent(userAgent = ""): "singbox" | "v2rayng" | "mihomo" {
+	if (SING_BOX_USER_AGENT.test(userAgent)) return "singbox";
+	if (V2RAY_USER_AGENT.test(userAgent)) return "v2rayng";
+	return "mihomo";
+}
+
 function normalizeTarget(target: string | undefined, userAgent = ""): string | null {
-	const requested = (target || "auto").toLowerCase();
+	const requested = (target?.trim() || "auto").toLowerCase();
 	if (!TARGETS.has(requested)) return null;
 	if (requested === "clash") return "mihomo";
 	if (requested !== "auto") return requested;
-	if (/sing-box/i.test(userAgent)) return "singbox";
-	if (/v2rayng/i.test(userAgent)) return "v2rayng";
-	return "mihomo";
+	return targetForUserAgent(userAgent);
+}
+
+function normalizeStoredTarget(target: string | undefined): string | null {
+	const requested = (target?.trim() || "auto").toLowerCase();
+	if (!TARGETS.has(requested)) return null;
+	return requested === "clash" ? "mihomo" : requested;
 }
 
 function conversionResponse(context: Context, result: ConversionResult, duration: number) {
@@ -265,7 +282,7 @@ function pageSize(context: Context) { return Math.min(100, Math.max(1, Number(co
 function pageOffset(context: Context) { return (Math.max(1, Number(context.req.query("page")) || 1) - 1) * pageSize(context); }
 function paged(context: Context, items: unknown[]) { const page = Math.max(1, Number(context.req.query("page")) || 1); return context.json({ items, page, totalPages: items.length < pageSize(context) ? page : page + 1, total: pageOffset(context) + items.length }); }
 function hostname(source: string) { try { return new URL(source).hostname; } catch { return undefined; } }
-function clientFamily(userAgent = "") { if (/sing-box/i.test(userAgent)) return "sing-box"; if (/v2rayng/i.test(userAgent)) return "v2rayNG"; if (/mihomo|clash/i.test(userAgent)) return "Mihomo"; return "unknown"; }
+function clientFamily(userAgent = "") { if (SING_BOX_USER_AGENT.test(userAgent)) return "sing-box"; if (V2RAY_USER_AGENT.test(userAgent)) return "v2rayNG"; if (MIHOMO_USER_AGENT.test(userAgent)) return "Mihomo"; return "unknown"; }
 async function audit(context: Context<{ Bindings: Bindings }>, action: string, targetType: string, targetId: string, metadata?: Record<string, unknown>) {
 	if (context.env.DB) await recordAdminAudit(context.env.DB, { actorEmail: "token-admin", action, targetType, targetId, metadata });
 }
