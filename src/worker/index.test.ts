@@ -7,7 +7,7 @@ describe("worker routes", () => {
 	it("reports health", async () => {
 		const response = await app.request("/api/health", undefined, {});
 		expect(response.status).toBe(200);
-		expect(await response.json()).toEqual({ status: "ok", version: "0.2.0" });
+		expect(await response.json()).toEqual({ status: "ok", version: "1.0.0" });
 	});
 
 	it("converts a proxy URI through GET /sub", async () => {

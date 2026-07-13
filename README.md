@@ -6,7 +6,7 @@ Production: `https://submorph.xqd.pp.ua`
 
 ## Current Features
 
-- Parse Shadowsocks, VMess, VLESS, and Trojan share links.
+- Parse Shadowsocks, VMess, VLESS, Trojan, Hysteria2, SOCKS5, AnyTLS, and Snell share links.
 - Read plain URI lists, Base64 URI lists, and Mihomo YAML `proxies`.
 - Render Mihomo profiles, Mihomo providers, sing-box 1.13 profiles, v2rayNG subscriptions, and redacted previews.
 - Convert remote HTTP/HTTPS subscriptions with redirect, timeout, UTF-8, private-address, and 10 MiB limits.

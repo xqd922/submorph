@@ -54,7 +54,7 @@ app.use("*", secureHeaders({
 	permissionsPolicy: { camera: [], microphone: [], geolocation: [] },
 }));
 
-app.get("/api/health", (context) => context.json({ status: "ok", version: "0.2.0" }));
+app.get("/api/health", (context) => context.json({ status: "ok", version: "1.0.0" }));
 
 app.post("/api/links", async (context) => {
 	const body = await readJsonObject(context);

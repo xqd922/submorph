@@ -10,6 +10,9 @@
   `https://submorph.xqd.pp.ua`。
 - 生产 `/api/health` 和 Shadowsocks 到 Mihomo Provider 的转换均返回 HTTP 200。
 - 当前生产 Version ID：`6a1a4f2e-7ff8-425c-b89c-6514f16ee791`。
+- v0.2 已加入 D1、KV、AES-GCM 短链接和管理员后台并推送。
+- v1.0 已支持八种协议；当前生产 Version ID：
+  `15818ade-eaed-4bfa-9b87-9e1f92919be6`。
 - Git 已初始化，当前分支为 `main`。
 - 初始脚手架提交：`adcec41 chore: scaffold SubMorph`
 - Cloudflare Worker 已创建并部署到：

@@ -1,7 +1,11 @@
 import { parse as parseYaml } from "yaml";
 import type { ProxyNode, TlsOptions, Transport } from "./types";
+import { parseAnyTls } from "./protocols/anytls";
+import { parseHysteria2 } from "./protocols/hysteria2";
+import { parseSnell } from "./protocols/snell";
+import { parseSocks5 } from "./protocols/socks5";
 
-const schemes = /^(ss|vmess|vless|trojan):\/\//i;
+const schemes = /^(ss|vmess|vless|trojan|hysteria2|hy2|socks5?|anytls|snell):\/\//i;
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 export interface Parsed { candidates: unknown[]; nodes: ProxyNode[]; errors: { index: number; message: string }[] }
 
@@ -25,6 +29,10 @@ function parseUri(uri: string): ProxyNode {
 	if (uri.startsWith("vmess://")) return parseVmess(uri);
 	if (uri.startsWith("vless://")) return parseUrlNode(uri, "vless");
 	if (uri.startsWith("trojan://")) return parseUrlNode(uri, "trojan");
+	if (/^(hysteria2|hy2):\/\//i.test(uri)) return parseHysteria2(uri);
+	if (/^socks5?:\/\//i.test(uri)) return parseSocks5(uri);
+	if (/^anytls:\/\//i.test(uri)) return parseAnyTls(uri);
+	if (/^snell:\/\//i.test(uri)) return parseSnell(uri);
 	throw new Error("Unsupported URI");
 }
 

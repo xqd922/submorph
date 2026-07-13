@@ -74,10 +74,10 @@ Mihomo provider 的 YAML、明文 URI 列表和 Base64 URI 列表不能混写。
 
 | 协议 | Mihomo | sing-box 1.13 | v2rayNG | 首次计划 |
 | --- | --- | --- | --- | --- |
-| Hysteria 2 | `unverified` | `unverified` | `unverified` | v1.0 候选 |
-| SOCKS5 | `unverified` | `unverified` | `unverified` | v1.0 候选 |
-| AnyTLS | `unverified` | `unverified` | `unverified` | v1.0 候选；Mihomo 不支持 AnyTLS + Reality |
-| Snell | `unverified` | `unverified` | `unsupported` | v1.0 候选 |
+| Hysteria 2 | `exact` | `exact` | `unsupported` | v1.0 |
+| SOCKS5 | `exact` | `exact` | `unsupported` | v1.0 |
+| AnyTLS | `exact` | `exact` | `unsupported` | v1.0；Mihomo 不支持 AnyTLS + Reality |
+| Snell | `exact` | `exact` | `unsupported` | v1.0 |
 | TUIC | `unverified` | `unverified` | `unverified` | 需求出现后评估 |
 | HTTP proxy | `unverified` | `unverified` | `unverified` | 需求出现后评估 |
 

@@ -1,5 +1,6 @@
 {
 	"name": "submorph",
+	"version": "1.0.0",
 	"description": "Cloudflare-native proxy subscription converter",
 	"cloudflare": {
 		"label": "SubMorph",
