@@ -50,6 +50,7 @@ type ConversionResult = {
 };
 
 type Bindings = Env & SecurityBindings & {
+	ASSETS?: Fetcher;
 	DB?: D1Database;
 	SUBMORPH_STORE?: KVNamespace;
 	LINK_ENCRYPTION_KEY?: string;
@@ -212,6 +213,8 @@ app.post("/api/convert", async (context) => {
 app.notFound((context) => {
 	if (context.req.path.startsWith("/api/") || context.req.path === "/sub")
 		return errorResponse(context, "NOT_FOUND", "API route not found", 404);
+	if (["GET", "HEAD"].includes(context.req.method) && context.env.ASSETS)
+		return context.env.ASSETS.fetch(context.req.raw);
 	return context.text("Not Found", 404);
 });
 
