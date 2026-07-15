@@ -1,6 +1,7 @@
 const MAX_REDIRECTS = 3;
 const MAX_BYTES = 10 * 1024 * 1024;
 const TIMEOUT_MS = 10_000;
+const UPSTREAM_HEADERS = { "User-Agent": "clash.meta", Accept: "application/json, text/plain, */*" };
 
 export class SourceError extends Error {
 	constructor(public code: string, message: string, public status: number) {
@@ -17,7 +18,7 @@ export async function loadRemoteSource(source: string): Promise<string> {
 		const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
 		let response: Response;
 		try {
-			response = await fetch(url, { redirect: "manual", signal: controller.signal });
+			response = await fetch(url, { headers: UPSTREAM_HEADERS, redirect: "manual", signal: controller.signal });
 		} catch (error) {
 			if (error instanceof DOMException && error.name === "AbortError")
 				throw new SourceError("FETCH_TIMEOUT", "Upstream subscription timed out", 504);

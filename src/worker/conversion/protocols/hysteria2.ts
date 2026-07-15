@@ -3,6 +3,7 @@ export interface Hy2Node {
 	name: string;
 	server: string;
 	port: number;
+	ports?: string[];
 	password: string;
 	transport: { type: "tcp" };
 	tls: { security: "tls"; serverName?: string; insecure?: boolean };
@@ -38,6 +39,7 @@ export function parseHysteria2(uri: string): Hy2Node {
 export function mihomoHysteria2(node: Hy2Node): Record<string, unknown> {
 	return {
 		name: node.name, type: "hysteria2", server: node.server, port: node.port, password: node.password,
+		...(node.ports ? { ports: node.ports.join(",") } : {}),
 		...(node.up ? { up: node.up } : {}), ...(node.down ? { down: node.down } : {}),
 		...(node.obfs ? { obfs: node.obfs } : {}), ...(node.obfsPassword ? { "obfs-password": node.obfsPassword } : {}),
 		...(node.tls.serverName ? { sni: node.tls.serverName } : {}), ...(node.tls.insecure !== undefined ? { "skip-cert-verify": node.tls.insecure } : {}),
@@ -46,7 +48,9 @@ export function mihomoHysteria2(node: Hy2Node): Record<string, unknown> {
 
 export function singboxHysteria2(node: Hy2Node): Record<string, unknown> {
 	return {
-		type: "hysteria2", tag: node.name, server: node.server, server_port: node.port, password: node.password,
+		type: "hysteria2", tag: node.name, server: node.server,
+		...(node.ports ? { server_ports: node.ports.map((value) => value.replace("-", ":")) } : { server_port: node.port }),
+		password: node.password,
 		...(node.up ? { up_mbps: mbps(node.up) } : {}), ...(node.down ? { down_mbps: mbps(node.down) } : {}),
 		...(node.obfs ? { obfs: { type: node.obfs, ...(node.obfsPassword ? { password: node.obfsPassword } : {}) } } : {}),
 		tls: { enabled: true, ...(node.tls.serverName ? { server_name: node.tls.serverName } : {}), ...(node.tls.insecure !== undefined ? { insecure: node.tls.insecure } : {}) },

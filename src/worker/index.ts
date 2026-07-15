@@ -76,7 +76,7 @@ app.get("/s/:id", async (context) => {
 	if (!resources) return errorResponse(context, "STORAGE_UNAVAILABLE", "Short links are not configured", 503);
 	const resolved = await resolveShortLink(resources.db, resources.LINK_ENCRYPTION_KEY, context.req.param("id"));
 	if (!resolved) return errorResponse(context, "LINK_NOT_FOUND", "Short link not found or disabled", 404);
-	const response = await handleConversion(context, resolved.source, resolved.link.outputTarget, true);
+	const response = await handleConversion(context, resolved.source, resolved.link.outputTarget);
 	background(context, recordShortLinkHit(resources.db, resolved.link.id));
 	return response;
 });
@@ -140,7 +140,7 @@ app.get("/sub", async (context) => {
 	if (!source) return errorResponse(context, "INVALID_INPUT", "Missing url parameter", 400);
 	if (!isRemoteSource(source) && !PROXY_URI.test(source))
 		return errorResponse(context, "INVALID_INPUT", "url must be HTTP, HTTPS, or a supported proxy URI", 400);
-	return handleConversion(context, source, context.req.query("target"), false);
+	return handleConversion(context, source, context.req.query("target"));
 });
 
 app.post("/api/convert", async (context) => {
@@ -163,7 +163,7 @@ app.post("/api/convert", async (context) => {
 		return errorResponse(context, "BODY_TOO_LARGE", "source exceeds 10 MiB", 413);
 	if (target !== undefined && typeof target !== "string")
 		return errorResponse(context, "UNSUPPORTED_TARGET", "target must be a string", 400);
-	return handleConversion(context, source.trim(), target as string | undefined, true);
+	return handleConversion(context, source.trim(), target as string | undefined);
 });
 
 app.notFound((context) => {
@@ -181,7 +181,6 @@ async function handleConversion(
 	context: Context,
 	source: string,
 	targetValue: string | undefined,
-	allowPastedContent: boolean,
 ) {
 	const startedAt = performance.now();
 	const target = normalizeTarget(targetValue, context.req.header("User-Agent"));
@@ -191,8 +190,6 @@ async function handleConversion(
 		if (context.env.DB && context.env.SOURCE_HASH_KEY && await getBlockedSource(context.env.DB, context.env.SOURCE_HASH_KEY, source))
 			return errorResponse(context, "BLOCKED_SOURCE", "This subscription source is blocked", 403);
 		const content = isRemoteSource(source) ? await loadRemoteSource(source) : source;
-		if (!allowPastedContent && !PROXY_URI.test(content))
-			return errorResponse(context, "INVALID_INPUT", "GET /sub accepts one proxy URI or a remote URL", 400);
 		const fingerprint = context.env.SOURCE_HASH_KEY ? await fingerprintSource(source, context.env.SOURCE_HASH_KEY) : "local";
 		const cacheKey = { sourceFingerprint: fingerprint, target, policyVersion: "compatible-v1", rendererVersion: "v1" };
 		const cached = context.env.SUBMORPH_STORE ? await getCachedConversion(context.env.SUBMORPH_STORE, cacheKey) : null;

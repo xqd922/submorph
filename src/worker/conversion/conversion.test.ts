@@ -46,6 +46,13 @@ describe("convertSubscriptionText", () => {
 		expect(JSON.parse(result.content).nodes[0].protocol).toBe("ss");
 	});
 
+	it("preserves Hysteria2 port hopping from Mihomo YAML", () => {
+		const source = `proxies:\n  - name: YAML HY2\n    type: hysteria2\n    server: hy.example.com\n    port: 443\n    ports: 20000-30000\n    password: secret\n    sni: hy.example.com\n`;
+		expect(convertSubscriptionText(source, "mihomo-provider").content).toContain("ports: 20000-30000");
+		expect(convertSubscriptionText(source, "singbox").content).toContain('"server_ports": [');
+		expect(convertSubscriptionText(source, "singbox").content).toContain('"20000:30000"');
+	});
+
 	it("rejects XHTTP when the target cannot express it", () => {
 		const source = "vless://00000000-0000-4000-8000-000000000003@x.example.com:443?encryption=none&security=tls&type=xhttp&path=%2F&sni=x.example.com#XHTTP";
 		expect(() => convertSubscriptionText(source, "singbox")).toThrowError(ConversionError);

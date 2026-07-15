@@ -1,7 +1,9 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import app, { targetForUserAgent } from "./index";
 
 const ss = "ss://YWVzLTI1Ni1nY206cGFzc3dvcmQ@ss.example.com:8388#Demo";
+
+afterEach(() => vi.unstubAllGlobals());
 
 function shortLinkEnvironment() {
 	let stored: Record<string, unknown> | null = null;
@@ -114,5 +116,12 @@ describe("worker routes", () => {
 		expect(response.status).toBe(200);
 		const body = await response.json() as { count: number };
 		expect(body.count).toBe(1);
+	});
+
+	it("accepts a remote Mihomo YAML subscription on GET /sub", async () => {
+		vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(`proxies:\n  - name: Remote\n    type: trojan\n    server: remote.example.com\n    port: 443\n    password: secret\n`)));
+		const response = await app.request("/sub?url=https%3A%2F%2Fexample.com%2Fsubscription&target=preview", {}, {});
+		expect(response.status).toBe(200);
+		expect(await response.text()).toContain('"protocol": "trojan"');
 	});
 });

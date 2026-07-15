@@ -67,6 +67,7 @@ function parseYamlNode(value: unknown): ProxyNode {
 	if (protocol === "vmess") { const id = required(value.uuid, "uuid"); validUuid(id); return { protocol, ...base, uuid: id, alterId: integer(value.alterId), security: string(value.cipher) || "auto" }; }
 	if (protocol === "vless") { const id = required(value.uuid, "uuid"); validUuid(id); return { protocol, ...base, uuid: id, encryption: string(value.encryption) || "none", flow: string(value.flow) }; }
 	if (protocol === "trojan") return { protocol, ...base, password: required(value.password, "password") };
+	if (protocol === "hysteria2") return { protocol, name: required(value.name, "name"), server: required(value.server, "server"), port: port(value.port), password: required(value.password, "password"), ports: yamlPorts(value.ports ?? value.mport), up: yamlBandwidth(value.up), down: yamlBandwidth(value.down), obfs: value.obfs === "salamander" ? "salamander" : undefined, obfsPassword: string(value["obfs-password"]), transport: { type: "tcp" }, tls: { security: "tls", serverName: string(value.sni), insecure: value["skip-cert-verify"] === true } };
 	throw new Error(`Unsupported proxy type: ${protocol}`);
 }
 
@@ -87,6 +88,8 @@ function validUuid(value: string): void { if (!uuid.test(value)) throw new Error
 function required(value: unknown, field: string): string { const result = string(value); if (!result) throw new Error(`${field} required`); return result; }
 function string(value: unknown): string | undefined { return typeof value === "string" ? value || undefined : typeof value === "number" ? `${value}` : undefined; }
 function bool(value: string | null | undefined): boolean | undefined { if (!value) return undefined; if (["1", "true"].includes(value.toLowerCase())) return true; if (["0", "false"].includes(value.toLowerCase())) return false; throw new Error("Invalid boolean"); }
+function yamlPorts(value: unknown): string[] | undefined { const values = Array.isArray(value) ? value : value === undefined ? [] : String(value).split(","); const result = values.map(String).map((item) => item.trim()).filter(Boolean); for (const item of result) { const match = /^(\d+)(?:-(\d+))?$/.exec(item); if (!match) throw new Error("Invalid Hysteria2 ports"); const start = port(match[1]), end = match[2] ? port(match[2]) : start; if (start > end) throw new Error("Invalid Hysteria2 port range"); } return result.length ? result : undefined; }
+function yamlBandwidth(value: unknown): string | undefined { if (value === undefined || value === "") return undefined; const match = /^(\d+(?:\.\d+)?)\s*(?:mbps)?$/i.exec(String(value).trim()); if (!match || Number(match[1]) <= 0) throw new Error("Bandwidth must be a positive Mbps value"); return `${match[1]} Mbps`; }
 function split(value: string): string[] { return value.split(/\r?\n/).map((line) => line.trim()).filter(Boolean); }
 function tryB64(value: string): string | undefined { try { return b64(value); } catch { return undefined; } }
 function b64(value: string): string { const normalized = value.replace(/-/g, "+").replace(/_/g, "/").replace(/\s/g, ""), padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, "="); return new TextDecoder("utf-8", { fatal: true, ignoreBOM: false }).decode(Uint8Array.from(atob(padded), (char) => char.charCodeAt(0))); }
