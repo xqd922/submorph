@@ -30,14 +30,14 @@ function AdminGate() {
 	return <main className="access-gate">
 		<section className="access-cover" aria-label="SubMorph 管理入口">
 			<a href="/" className="access-wordmark">SubMorph<span>_</span></a>
-			<div><p>私密基础设施<br />通用订阅服务</p><strong>管理<br /><em>控制台</em></strong></div>
+			<div><p>管理后台</p><strong>保持服务<br /><em>稳定运行。</em></strong></div>
 			<small>SUBMORPH / 系统访问 / 2026</small>
 		</section>
 		<section className="access-panel">
 			<form onSubmit={login} aria-busy={busy || authenticated === null}>
 				<p className="eyebrow">00 / 身份验证</p>
-				<h1>管理员<br />访问</h1>
-				<p>输入管理员账号和密码，进入运营管理工作区。</p>
+				<h1>登录</h1>
+				<p>使用管理员账号进入服务后台。</p>
 				<label htmlFor="admin-username">用户名</label>
 				<input id="admin-username" name="username" required autoFocus autoComplete="username" disabled={authenticated === null || busy} />
 				<label htmlFor="admin-password">密码</label>
