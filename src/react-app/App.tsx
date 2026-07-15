@@ -59,7 +59,7 @@ function App() {
 
 		<main className="main-shell">
 			<section className="intro" aria-labelledby="intro-title">
-				<div><p className="eyebrow">SUBMORPH / 通用订阅</p><h1 id="intro-title">一个订阅，<br /><em>处处可用。</em></h1></div>
+				<div><p className="eyebrow">SUBMORPH / 通用订阅</p><h1 id="intro-title">一个订阅，<em>处处可用。</em></h1></div>
 				<div className="intro-copy"><p>输入订阅地址或内容，生成一个加密链接。Mihomo、sing-box 与 v2rayNG 会自动获得适合自己的格式。</p><span>加密存储 · 自动识别 · 不展示节点</span></div>
 			</section>
 
@@ -77,10 +77,8 @@ function App() {
 					{subscriptionUrl ? <div className="subscription-result"><p>复制到你的订阅客户端即可使用。</p><a className="subscription-url" href={subscriptionUrl} target="_blank" rel="noreferrer">{subscriptionUrl}</a><div className="tools"><span>已加密 / 自动适配</span><div><button type="button" onClick={copy}>{copied ? "已复制" : "复制地址"}</button><a href={subscriptionUrl} target="_blank" rel="noreferrer">打开 &#8599;</a></div></div></div> : <div className="empty"><span aria-hidden="true">&#8594;</span><div><h3>链接会显示在这里</h3><p>先在左侧输入订阅，然后创建一个通用链接。</p></div></div>}
 				</aside>
 			</section>
-
-			<div className="support-row"><span>支持 URI、Base64 与 Mihomo YAML</span><span>运行于 Cloudflare 边缘网络</span></div>
 		</main>
-		<footer><a className="brand" href="#top">SubMorph<span>_</span></a><span>私密、简单、自动适配。</span></footer>
+		<footer><span>支持 URI、Base64 与 Mihomo YAML</span><span>Cloudflare 边缘运行</span></footer>
 	</div>;
 }
 

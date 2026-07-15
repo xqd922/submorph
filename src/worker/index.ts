@@ -212,7 +212,7 @@ app.post("/api/convert", async (context) => {
 app.notFound((context) => {
 	if (context.req.path.startsWith("/api/") || context.req.path === "/sub")
 		return errorResponse(context, "NOT_FOUND", "API route not found", 404);
-	return context.notFound();
+	return context.text("Not Found", 404);
 });
 
 app.onError((error, context) => {

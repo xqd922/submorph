@@ -39,6 +39,11 @@ describe("worker routes", () => {
 		expect(await response.json()).toEqual({ status: "ok", version: "1.0.0" });
 	});
 
+	it("leaves frontend routes for the static asset fallback", async () => {
+		const response = await app.request("/admin", undefined, {});
+		expect(response.status).toBe(404);
+	});
+
 	it("converts a proxy URI through GET /sub", async () => {
 		const response = await app.request(`/sub?target=mihomo-provider&url=${encodeURIComponent(ss)}`, undefined, {});
 		expect(response.status).toBe(200);

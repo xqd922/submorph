@@ -1,8 +1,10 @@
 #root { min-height: 100vh; }
 
 .page {
-	min-height: 100vh;
-	overflow-x: clip;
+	height: 100dvh;
+	display: grid;
+	grid-template-rows: 64px minmax(0, 1fr) 44px;
+	overflow: hidden;
 	color: var(--ink);
 	background-color: var(--paper);
 	background-image: linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
@@ -13,7 +15,7 @@
 
 .site-header {
 	width: min(1120px, calc(100% - 40px));
-	height: 72px;
+	height: 64px;
 	margin: auto;
 	display: flex;
 	align-items: center;
@@ -27,16 +29,17 @@
 .health.offline i { background: var(--danger); }
 
 .main-shell, .page > footer { width: min(1120px, calc(100% - 40px)); margin: auto; }
-.intro { padding: 88px 0 58px; display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(260px, .55fr); align-items: end; gap: 72px; }
-.intro .eyebrow { margin-bottom: 24px; }
-.intro h1 { margin: 0; font: 400 clamp(64px, 8vw, 102px)/.88 var(--font-display); letter-spacing: -.065em; }
+.main-shell { height: 100%; min-height: 0; display: grid; grid-template-rows: auto minmax(0, 1fr); }
+.intro { padding: clamp(18px, 3.8vh, 40px) 0 clamp(18px, 3vh, 32px); display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(260px, .55fr); align-items: end; gap: clamp(36px, 6vw, 72px); }
+.intro .eyebrow { margin-bottom: 13px; }
+.intro h1 { margin: 0; white-space: nowrap; font: 400 clamp(46px, 6.1vw, 76px)/.92 var(--font-display); letter-spacing: -.06em; }
 .intro h1 em { font-weight: 400; font-style: normal; }
 .intro-copy { padding-top: 18px; border-top: 1px solid var(--hairline-strong); }
-.intro-copy p { margin: 0 0 22px; color: var(--muted); font-size: 13px; line-height: 1.8; }
+.intro-copy p { margin: 0 0 12px; color: var(--muted); font-size: 12px; line-height: 1.65; }
 .intro-copy span { color: var(--faint); font: 500 8px/1.5 var(--font-mono); letter-spacing: .06em; }
 
-.workspace { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid var(--hairline-strong); background: rgb(255 255 255 / 58%); }
-.panel { min-width: 0; min-height: 470px; padding: 36px; }
+.workspace { min-height: 0; display: grid; grid-template-columns: 1fr 1fr; overflow: hidden; border: 1px solid var(--hairline-strong); background: rgb(255 255 255 / 58%); }
+.panel { min-width: 0; min-height: 0; padding: clamp(24px, 3.2vh, 34px); }
 .form-panel { display: flex; flex-direction: column; }
 .result-panel { display: flex; flex-direction: column; color: #f4f4f4; background: var(--black); }
 .title-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 24px; }
@@ -47,10 +50,10 @@
 .tabs { display: flex; padding: 3px; background: rgb(20 22 24 / 5%); }
 .tabs button { padding: 7px 10px; border: 0; color: var(--faint); background: transparent; font: 600 9px/1 var(--font-mono); }
 .tabs button[aria-selected="true"] { color: white; background: var(--ink); }
-.form-panel > label { display: block; margin: 48px 0 10px; font: 600 9px/1.4 var(--font-mono); letter-spacing: .07em; }
+.form-panel > label { display: block; margin: clamp(20px, 3.5vh, 36px) 0 10px; font: 600 9px/1.4 var(--font-mono); letter-spacing: .07em; }
 .form-panel input, .form-panel textarea { width: 100%; padding: 14px; border: 1px solid var(--hairline-strong); border-radius: 0; outline: 0; color: var(--ink); background: rgb(255 255 255 / 56%); }
-.form-panel input { height: 54px; font: 400 16px/1.4 var(--font-display); }
-.form-panel textarea { min-height: 166px; resize: vertical; font: 12px/1.7 var(--font-mono); }
+.form-panel input { height: 50px; font: 400 16px/1.4 var(--font-display); }
+.form-panel textarea { min-height: 0; max-height: 150px; flex: 1; resize: vertical; font: 12px/1.7 var(--font-mono); }
 .form-panel input::placeholder, .form-panel textarea::placeholder { color: var(--faint); }
 .form-panel input:focus, .form-panel textarea:focus { border-color: var(--accent); box-shadow: inset 3px 0 var(--accent); }
 .form-note { margin: 13px 0 0; color: var(--faint); font-size: 10px; line-height: 1.5; }
@@ -74,9 +77,7 @@
 .tools > div { display: flex; gap: 8px; }
 .tools button, .tools a { padding: 8px 10px; border: 1px solid rgb(255 255 255 / 20%); color: rgb(255 255 255 / 72%); background: transparent; font: 500 9px/1 var(--font-mono); transition: transform 140ms cubic-bezier(.23, 1, .32, 1), color 180ms ease, border-color 180ms ease; }
 
-.support-row { min-height: 76px; display: flex; justify-content: space-between; align-items: center; gap: 20px; border-bottom: 1px solid var(--hairline-strong); color: var(--faint); font: 500 9px/1.5 var(--font-mono); }
-.page > footer { min-height: 94px; display: flex; align-items: center; justify-content: space-between; color: var(--faint); font-size: 10px; }
-.page > footer .brand { color: var(--ink); font-size: 20px; }
+.page > footer { height: 44px; display: flex; align-items: center; justify-content: space-between; border-top: 1px solid var(--hairline); color: var(--faint); font: 500 8px/1 var(--font-mono); }
 
 @media (hover: hover) and (pointer: fine) {
 	.header-actions a:hover { color: var(--ink); }
@@ -89,13 +90,15 @@
 @keyframes spin { to { transform: rotate(360deg); } }
 
 @media (max-width: 760px) {
+	.page { height: auto; min-height: 100vh; display: block; overflow-x: clip; overflow-y: visible; }
 	.site-header, .main-shell, .page > footer { width: calc(100vw - 32px); }
 	.site-header { height: 64px; }
 	.product-label { display: none; }
 	.header-actions { gap: 16px; }
+	.main-shell { height: auto; display: block; }
 	.intro { padding: 52px 0 38px; display: block; }
 	.intro .eyebrow { margin-bottom: 18px; }
-	.intro h1 { font-size: clamp(54px, 17vw, 78px); }
+	.intro h1 { white-space: normal; font-size: clamp(54px, 17vw, 78px); }
 	.intro-copy { margin-top: 34px; }
 	.intro-copy p { max-width: 440px; }
 	.workspace { grid-template-columns: 1fr; }
@@ -112,6 +115,5 @@
 	.result-panel { min-height: 300px; }
 	.empty { align-items: center; }
 	.tools { align-items: flex-start; flex-direction: column; }
-	.support-row { padding: 20px 0; align-items: flex-start; flex-direction: column; justify-content: center; gap: 8px; }
-	.page > footer { min-height: 82px; }
+	.page > footer { height: auto; min-height: 64px; gap: 12px; }
 }
