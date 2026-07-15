@@ -12,12 +12,13 @@
 - 当前生产 Version ID：`6a1a4f2e-7ff8-425c-b89c-6514f16ee791`。
 - v0.2 已加入 D1、KV、AES-GCM 短链接和管理员后台并推送。
 - v1.0 已支持八种协议；当前生产 Version ID：
-  `679c0698-e939-4bfb-b255-259b5449927f`。
+  `84b9428f-8522-466a-82aa-2c13c7c5a505`。
 - 生产转换现已默认由 Worker 按 User-Agent 自动选择 Mihomo、sing-box 或
   v2rayNG；公开界面不再要求用户选择内核或输出格式。
 - 自动目标、显式目标覆盖和自动短链接均通过生产验证；本地共有 32 项测试通过。
 - 远程 Mihomo YAML 已直接进入统一解析器；生产实测 53 个输入节点去重为
   33 个有效节点，Mihomo、sing-box 和 v2rayNG 均转换成功。
+- 公共前端只创建并显示加密订阅链接，不再展示节点、统计或配置正文。
 - Git 已初始化，当前分支为 `main`。
 - 初始脚手架提交：`adcec41 chore: scaffold SubMorph`
 - Cloudflare Worker 已创建并部署到：

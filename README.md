@@ -10,7 +10,7 @@ Production: `https://submorph.xqd.pp.ua`
 - Read plain URI lists, Base64 URI lists, and Mihomo YAML `proxies`.
 - Render Mihomo profiles, Mihomo providers, sing-box 1.13 profiles, v2rayNG subscriptions, and redacted previews.
 - Convert remote HTTP/HTTPS subscriptions with redirect, timeout, UTF-8, private-address, and 10 MiB limits.
-- Minimal responsive React interface with automatic client detection, copy, download, statistics, and warning states.
+- Minimal responsive React interface that creates one encrypted, auto-detecting subscription link.
 - Encrypted reusable short links backed by D1 and Web Crypto AES-GCM.
 - Five-view administration dashboard for events, links, blocked sources, and audit records.
 - Five-minute KV cache for complete successful conversions.
