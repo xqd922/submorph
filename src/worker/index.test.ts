@@ -48,13 +48,16 @@ describe("worker routes", () => {
 
 	it.each([
 		["sing-box/1.13.14", "singbox"],
+		["SFA/1.12", "singbox"],
+		["SFI/1.12", "singbox"],
 		["v2rayNG/1.10.0", "v2rayng"],
+		["Shadowrocket/2.2", "v2rayng"],
 		["v2rayN/7.0", "v2rayng"],
 		["Mihomo/1.19", "mihomo"],
 		["Clash.Meta/1.18", "mihomo"],
 		["ClashX Pro/1.0", "mihomo"],
 		["Stash/2.6", "mihomo"],
-		["Mozilla/5.0", "mihomo"],
+		["Mozilla/5.0", "preview"],
 		["", "mihomo"],
 	])("selects an automatic target for %s", (userAgent, target) => {
 		expect(targetForUserAgent(userAgent)).toBe(target);
@@ -143,14 +146,19 @@ describe("worker routes", () => {
 			body: JSON.stringify({ source: ss, target: "preview" }),
 		}, {});
 		expect(response.status).toBe(200);
-		const body = await response.json() as { count: number };
-		expect(body.count).toBe(1);
+		expect(response.headers.get("Content-Type")).toContain("text/html");
+		const body = await response.text();
+		expect(body).toContain("Clash / Mihomo");
+		expect(body).toContain("sing-box");
 	});
 
 	it("accepts a remote Mihomo YAML subscription on GET /sub", async () => {
-		vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(`proxies:\n  - name: Remote\n    type: trojan\n    server: remote.example.com\n    port: 443\n    password: secret\n`)));
-		const response = await app.request("/sub?url=https%3A%2F%2Fexample.com%2Fsubscription&target=preview", {}, {});
+		vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(`proxies:\n  - name: 香港 0.2x\n    type: trojan\n    server: remote.example.com\n    port: 443\n    password: secret\n`, { headers: { "Content-Disposition": "attachment; filename*=UTF-8''%E6%B5%8B%E8%AF%95%E8%AE%A2%E9%98%85", "Subscription-Userinfo": "upload=1; download=2; total=3; expire=4", "Profile-Web-Page-Url": "https://example.com/home", "Profile-Update-Interval": "12" } })));
+		const response = await app.request("/sub?url=https%3A%2F%2Fexample.com%2Fsubscription&target=mihomo-provider", {}, {});
 		expect(response.status).toBe(200);
-		expect(await response.text()).toContain('"protocol": "trojan"');
+		expect(response.headers.get("Content-Disposition")).toContain(encodeURIComponent("测试订阅"));
+		expect(response.headers.get("Subscription-Userinfo")).toContain("download=2");
+		expect(response.headers.get("Profile-Update-Interval")).toBe("12");
+		expect(await response.text()).toContain("🇭🇰 Hong Kong 01 [0.2x]");
 	});
 });

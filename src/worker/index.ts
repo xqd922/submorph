@@ -30,7 +30,7 @@ import {
 	type AdminIdentity,
 	type SecurityBindings,
 } from "./platform/security";
-import { isRemoteSource, loadRemoteSource, SourceError } from "./platform/source";
+import { isRemoteSource, loadRemoteSubscription, SourceError, type SubscriptionProfile } from "./platform/source";
 
 const MAX_SOURCE_BYTES = 10 * 1024 * 1024;
 const TARGETS = new Set(["auto", "mihomo", "mihomo-provider", "clash", "singbox", "v2rayng", "preview"]);
@@ -46,6 +46,7 @@ type ConversionResult = {
 	skipped: number;
 	warnings?: unknown[];
 	filename?: string;
+	profile?: SubscriptionProfile;
 };
 
 type Bindings = Env & SecurityBindings & {
@@ -231,11 +232,13 @@ async function handleConversion(
 	try {
 		if (context.env.DB && context.env.SOURCE_HASH_KEY && await getBlockedSource(context.env.DB, context.env.SOURCE_HASH_KEY, source))
 			return errorResponse(context, "BLOCKED_SOURCE", "This subscription source is blocked", 403);
-		const content = isRemoteSource(source) ? await loadRemoteSource(source) : source;
+		const remote = isRemoteSource(source);
+		const loaded = remote ? await loadRemoteSubscription(source) : { content: source, profile: { name: "Me", upload: "0", download: "0", total: "0", expire: "" } };
+		const profile = { ...loaded.profile, homepage: loaded.profile.homepage || new URL(context.req.url).origin };
 		const fingerprint = context.env.SOURCE_HASH_KEY ? await fingerprintSource(source, context.env.SOURCE_HASH_KEY) : "local";
-		const cacheKey = { sourceFingerprint: fingerprint, target, policyVersion: "compatible-v1", rendererVersion: "v1" };
+		const cacheKey = { sourceFingerprint: fingerprint, target, policyVersion: "legacy-compatible-v2", rendererVersion: "legacy-profiles-v2" };
 		const cached = context.env.SUBMORPH_STORE ? await getCachedConversion(context.env.SUBMORPH_STORE, cacheKey) : null;
-		const result = (cached ?? await convertSubscription({ source: content, target: target as OutputTarget })) as ConversionResult;
+		const result = (cached ?? { ...await convertSubscription({ source: loaded.content, target: target as OutputTarget, formatNames: remote, isAirportSubscription: remote }), profile }) as ConversionResult;
 		if (!cached && context.env.SUBMORPH_STORE) background(context, putCachedConversion(context.env.SUBMORPH_STORE, cacheKey, { ...result, warnings: result.warnings ?? [] }));
 		if (context.env.DB) background(context, recordConversionEvent(context.env.DB, {
 			sourceFingerprint: fingerprint, sourceHostname: hostname(source), target, clientFamily: clientFamily(context.req.header("User-Agent")),
@@ -255,13 +258,15 @@ async function handleConversion(
 	}
 }
 
-const SING_BOX_USER_AGENT = /sing-box/i;
-const V2RAY_USER_AGENT = /v2ray(?:ng|n)/i;
+const SING_BOX_USER_AGENT = /sing-box|SFA|SFI|SFM|SFT/i;
+const V2RAY_USER_AGENT = /v2ray(?:ng|n)|quantumult|shadowrocket|surge|loon/i;
 const MIHOMO_USER_AGENT = /mihomo|clash(?:\.meta|x)?|stash/i;
+const BROWSER_USER_AGENT = /mozilla|chrome|safari|firefox|edge/i;
 
-export function targetForUserAgent(userAgent = ""): "singbox" | "v2rayng" | "mihomo" {
+export function targetForUserAgent(userAgent = ""): "singbox" | "v2rayng" | "mihomo" | "preview" {
 	if (SING_BOX_USER_AGENT.test(userAgent)) return "singbox";
 	if (V2RAY_USER_AGENT.test(userAgent)) return "v2rayng";
+	if (BROWSER_USER_AGENT.test(userAgent) && !MIHOMO_USER_AGENT.test(userAgent)) return "preview";
 	return "mihomo";
 }
 
@@ -289,9 +294,23 @@ function conversionResponse(context: Context<AppEnv>, result: ConversionResult, 
 	context.header("X-SubMorph-Skipped", String(result.skipped));
 	context.header("X-SubMorph-Warning-Count", String(result.warnings?.length ?? 0));
 	context.header("X-SubMorph-Duration-Ms", String(Math.round(duration)));
-	if (result.filename) context.header("Content-Disposition", `inline; filename="${result.filename.replace(/["\r\n]/g, "")}"`);
+	if (result.contentType !== "text/html; charset=utf-8" && result.profile) applyProfileHeaders(context, result.profile);
+	else if (result.filename) context.header("Content-Disposition", 'inline; filename="' + result.filename.replace(/["\r\n]/g, "") + '"');
 	return context.body(result.content);
 }
+
+function applyProfileHeaders(context: Context<AppEnv>, profile: SubscriptionProfile) {
+	context.header("Content-Disposition", "attachment; filename*=UTF-8''" + encodeURIComponent(profile.name));
+	context.header("Profile-Title", base64Utf8(profile.name));
+	context.header("Profile-Update-Interval", String(profile.updateInterval ?? 24));
+	if (profile.homepage) context.header("Profile-Web-Page-Url", safeHeaderUrl(profile.homepage));
+	if (profile.expire) { context.header("Profile-Expire", profile.expire); context.header("Expires", profile.expire); }
+	if ([profile.upload, profile.download, profile.total].some((value) => Number(value) > 0) || profile.expire)
+		context.header("Subscription-Userinfo", "upload=" + profile.upload + "; download=" + profile.download + "; total=" + profile.total + "; expire=" + profile.expire);
+}
+
+function base64Utf8(value: string): string { const bytes = new TextEncoder().encode(value); let binary = ""; for (const byte of bytes) binary += String.fromCharCode(byte); return btoa(binary); }
+function safeHeaderUrl(value: string): string { try { return new URL(value).toString(); } catch { return encodeURIComponent(value); } }
 
 function errorResponse(context: Context<AppEnv>, code: string, message: string, status: number) {
 	context.header("Cache-Control", "no-store");

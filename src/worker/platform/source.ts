@@ -11,7 +11,14 @@ export class SourceError extends Error {
 
 export const isRemoteSource = (source: string) => /^https?:\/\//i.test(source);
 
+export interface SubscriptionProfile { name: string; upload: string; download: string; total: string; expire: string; homepage?: string; updateInterval?: number }
+export interface LoadedSubscription { content: string; profile: SubscriptionProfile }
+
 export async function loadRemoteSource(source: string): Promise<string> {
+	return (await loadRemoteSubscription(source)).content;
+}
+
+export async function loadRemoteSubscription(source: string): Promise<LoadedSubscription> {
 	let url = validateUrl(source);
 	for (let redirects = 0; redirects <= MAX_REDIRECTS; redirects += 1) {
 		const controller = new AbortController();
@@ -36,9 +43,35 @@ export async function loadRemoteSource(source: string): Promise<string> {
 			continue;
 		}
 		if (!response.ok) throw new SourceError("FETCH_FAILED", `Upstream returned HTTP ${response.status}`, 502);
-		return readLimitedText(response);
+		return { content: await readLimitedText(response), profile: subscriptionProfile(response) };
 	}
 	throw new SourceError("FETCH_FAILED", "Unable to fetch upstream subscription", 502);
+}
+
+function subscriptionProfile(response: Response): SubscriptionProfile {
+	const disposition = response.headers.get("Content-Disposition") ?? "";
+	const userInfo = response.headers.get("Subscription-Userinfo") ?? "";
+	const homepage = response.headers.get("Profile-Web-Page-Url") ?? response.headers.get("Web-Page-Url") ?? response.headers.get("Homepage") ?? response.headers.get("Website") ?? undefined;
+	const interval = Number(response.headers.get("Profile-Update-Interval"));
+	return {
+		name: filename(disposition),
+		upload: userInfo.match(/upload=(\d+)/i)?.[1] ?? "0",
+		download: userInfo.match(/download=(\d+)/i)?.[1] ?? "0",
+		total: userInfo.match(/total=(\d+)/i)?.[1] ?? "0",
+		expire: userInfo.match(/expire=(\d+)/i)?.[1] ?? response.headers.get("Profile-Expire") ?? response.headers.get("Expires") ?? "",
+		...(homepage ? { homepage: decodeHeader(homepage) } : {}),
+		...(Number.isFinite(interval) && interval > 0 ? { updateInterval: interval } : {}),
+	};
+}
+
+function filename(value: string): string {
+	const encoded = value.match(/filename\*=UTF-8''([^;\s]+)/i)?.[1];
+	if (encoded) { try { return decodeURIComponent(encoded); } catch { return encoded; } }
+	return value.match(/filename="([^"]+)"/i)?.[1] ?? value.match(/filename=([^;\s]+)/i)?.[1] ?? "Sub";
+}
+
+function decodeHeader(value: string): string {
+	try { return decodeURIComponent(value); } catch { return value; }
 }
 
 function validateUrl(source: string): URL {

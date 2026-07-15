@@ -1,4 +1,4 @@
 import { convertSubscriptionText, type OutputTarget } from "../conversion";
 
-export const convertSubscription = ({ source, target }: { source: string; target: OutputTarget }) =>
-	convertSubscriptionText(source, target);
+export const convertSubscription = ({ source, target, formatNames, isAirportSubscription }: { source: string; target: OutputTarget; formatNames?: boolean; isAirportSubscription?: boolean }) =>
+	convertSubscriptionText(source, target, { formatNames, isAirportSubscription });

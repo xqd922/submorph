@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { parse as parseYaml } from "yaml";
 import { convertSubscriptionText, ConversionError } from "./index";
 
 const vmess = `vmess://${btoa(JSON.stringify({
@@ -43,7 +44,27 @@ describe("convertSubscriptionText", () => {
 	it("reads the proxies root from Mihomo YAML", () => {
 		const result = convertSubscriptionText(`proxies:\n  - name: YAML SS\n    type: ss\n    server: yaml.example.com\n    port: 443\n    cipher: aes-128-gcm\n    password: secret\n`, "preview");
 		expect(result.rendered).toBe(1);
-		expect(JSON.parse(result.content).nodes[0].protocol).toBe("ss");
+		expect(result.content).toContain("Clash / Mihomo");
+		expect(result.content).toContain("type: ss");
+		expect(result.content).toContain("sing-box");
+	});
+
+	it("restores the full Clash and sing-box profiles", () => {
+		const clash = convertSubscriptionText(lines.join("\n"), "mihomo").content;
+		expect(clash).toContain("mixed-port: 7890");
+		expect(clash).toContain("name: Manual");
+		expect(clash).toContain("rule-providers:");
+		const singbox = convertSubscriptionText(lines.join("\n"), "singbox").content;
+		expect(singbox).toContain('"dns"');
+		expect(singbox).toContain('"inbounds"');
+		expect(singbox).toContain('"experimental"');
+	});
+
+	it("formats remote subscription node names like the previous project", () => {
+		const source = `proxies:\n  - name: 香港 IPLC 0.2x\n    type: ss\n    server: hk1.example.com\n    port: 443\n    cipher: aes-128-gcm\n    password: secret\n  - name: 香港 IPv6\n    type: ss\n    server: hk2.example.com\n    port: 443\n    cipher: aes-128-gcm\n    password: secret\n`;
+		const result = convertSubscriptionText(source, "mihomo-provider", { formatNames: true, isAirportSubscription: true });
+		const proxies = (parseYaml(result.content) as { proxies: Array<{ name: string }> }).proxies;
+		expect(proxies.map((proxy) => proxy.name)).toEqual(["🇭🇰 Hong Kong 01 [0.2x]", "🇭🇰 Hong Kong 02 [IPv6]"]);
 	});
 
 	it("preserves Hysteria2 port hopping from Mihomo YAML", () => {
