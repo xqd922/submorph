@@ -40,11 +40,11 @@ describe("worker routes", () => {
 	});
 
 	it("serves frontend routes through the static asset fallback", async () => {
-		const fetch = vi.fn().mockResolvedValue(new Response("<!doctype html><title>SubMorph</title>", { headers: { "Content-Type": "text/html" } }));
-		const response = await app.request("/admin", undefined, { ASSETS: { fetch } as unknown as Fetcher });
+		const assetsFetch = vi.fn().mockResolvedValue(await fetch("data:text/html,%3Ctitle%3ESubMorph%3C/title%3E"));
+		const response = await app.request("/admin", undefined, { ASSETS: { fetch: assetsFetch } as unknown as Fetcher });
 		expect(response.status).toBe(200);
 		expect(response.headers.get("Content-Type")).toContain("text/html");
-		expect(fetch).toHaveBeenCalledOnce();
+		expect(assetsFetch).toHaveBeenCalledOnce();
 	});
 
 	it("converts a proxy URI through GET /sub", async () => {

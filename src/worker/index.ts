@@ -210,11 +210,13 @@ app.post("/api/convert", async (context) => {
 	return handleConversion(context, source.trim(), target as string | undefined);
 });
 
-app.notFound((context) => {
+app.notFound(async (context) => {
 	if (context.req.path.startsWith("/api/") || context.req.path === "/sub")
 		return errorResponse(context, "NOT_FOUND", "API route not found", 404);
-	if (["GET", "HEAD"].includes(context.req.method) && context.env.ASSETS)
-		return context.env.ASSETS.fetch(context.req.raw);
+	if (["GET", "HEAD"].includes(context.req.method) && context.env.ASSETS) {
+		const response = await context.env.ASSETS.fetch(context.req.raw);
+		return new Response(response.body, response);
+	}
 	return context.text("Not Found", 404);
 });
 
