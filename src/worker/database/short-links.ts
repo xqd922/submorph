@@ -11,6 +11,8 @@ export interface ShortLink {
 	lastAccessedAt?: string;
 }
 
+export interface ShortLinkFilters { q?: string; target?: string; enabled?: boolean }
+
 export async function createShortLink(
 	db: D1Database,
 	secrets: ShortLinkSecrets,
@@ -61,11 +63,20 @@ export async function deleteShortLink(db: D1Database, id: string): Promise<boole
 	return result.meta.changes > 0;
 }
 
-export async function listShortLinks(db: D1Database, limit = 100, offset = 0): Promise<ShortLink[]> {
+export async function listShortLinks(db: D1Database, limit = 100, offset = 0, filters: ShortLinkFilters = {}): Promise<{ items: ShortLink[]; total: number }> {
+	const conditions: string[] = [], values: Array<string | number> = [];
+	if (filters.q) {
+		conditions.push("(id LIKE ? OR target_fingerprint LIKE ? OR output_target LIKE ?)");
+		const q = `%${filters.q.slice(0, 100)}%`; values.push(q, q, q);
+	}
+	if (filters.target) { conditions.push("output_target = ?"); values.push(filters.target); }
+	if (filters.enabled !== undefined) { conditions.push("enabled = ?"); values.push(filters.enabled ? 1 : 0); }
+	const where = conditions.length ? ` WHERE ${conditions.join(" AND ")}` : "";
+	const count = await db.prepare(`SELECT COUNT(*) total FROM short_links${where}`).bind(...values).first<{ total: number }>();
 	const result = await db.prepare(`SELECT id, encrypted_target, encryption_iv, target_fingerprint, output_target,
-		enabled, hit_count, created_at, last_accessed_at FROM short_links ORDER BY created_at DESC LIMIT ? OFFSET ?`)
-		.bind(Math.min(500, Math.max(1, Math.trunc(limit))), Math.max(0, offset)).all<ShortLinkRow>();
-	return result.results.map(mapRow);
+		enabled, hit_count, created_at, last_accessed_at FROM short_links${where} ORDER BY created_at DESC LIMIT ? OFFSET ?`)
+		.bind(...values, Math.min(500, Math.max(1, Math.trunc(limit))), Math.max(0, offset)).all<ShortLinkRow>();
+	return { items: result.results.map(mapRow), total: Number(count?.total ?? 0) };
 }
 
 async function findShortLink(db: D1Database, fingerprint: string, outputTarget: string): Promise<ShortLinkRow | null> {

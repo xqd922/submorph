@@ -18,6 +18,13 @@ export interface ConversionEvent extends ConversionEventInput {
 	createdAt: string;
 }
 
+export interface ConversionEventFilters {
+	q?: string;
+	target?: string;
+	success?: boolean;
+	cacheHit?: boolean;
+}
+
 export async function recordConversionEvent(db: D1Database, input: ConversionEventInput): Promise<void> {
 	await db.prepare(`INSERT INTO conversion_events
 		(source_fingerprint, source_hostname, target, client_family, success, cache_hit, node_count, duration_ms, error_code, created_at)
@@ -35,11 +42,22 @@ export async function recordConversionEvent(db: D1Database, input: ConversionEve
 	).run();
 }
 
-export async function listConversionEvents(db: D1Database, limit = 100, offset = 0): Promise<ConversionEvent[]> {
+
+export async function listConversionEvents(db: D1Database, limit = 100, offset = 0, filters: ConversionEventFilters = {}): Promise<{ items: ConversionEvent[]; total: number }> {
+	const conditions: string[] = [], values: Array<string | number> = [];
+	if (filters.q) {
+		conditions.push("(source_hostname LIKE ? OR source_fingerprint LIKE ? OR client_family LIKE ? OR error_code LIKE ?)");
+		const q = `%${filters.q.slice(0, 100)}%`; values.push(q, q, q, q);
+	}
+	if (filters.target) { conditions.push("target = ?"); values.push(filters.target); }
+	if (filters.success !== undefined) { conditions.push("success = ?"); values.push(filters.success ? 1 : 0); }
+	if (filters.cacheHit !== undefined) { conditions.push("cache_hit = ?"); values.push(filters.cacheHit ? 1 : 0); }
+	const where = conditions.length ? ` WHERE ${conditions.join(" AND ")}` : "";
+	const count = await db.prepare(`SELECT COUNT(*) total FROM conversion_events${where}`).bind(...values).first<{ total: number }>();
 	const result = await db.prepare(`SELECT id, source_fingerprint, source_hostname, target, client_family,
 		success, cache_hit, node_count, duration_ms, error_code, created_at
-		FROM conversion_events ORDER BY id DESC LIMIT ? OFFSET ?`).bind(clampLimit(limit), Math.max(0, offset)).all<ConversionEventRow>();
-	return result.results.map(mapRow);
+		FROM conversion_events${where} ORDER BY id DESC LIMIT ? OFFSET ?`).bind(...values, clampLimit(limit), Math.max(0, offset)).all<ConversionEventRow>();
+	return { items: result.results.map(mapRow), total: Number(count?.total ?? 0) };
 }
 
 interface ConversionEventRow {

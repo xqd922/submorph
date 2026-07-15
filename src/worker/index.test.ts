@@ -147,6 +147,19 @@ describe("worker routes", () => {
 		expect(logout.headers.get("Set-Cookie")).toContain("Max-Age=0");
 	});
 
+	it("blocks a source fingerprint directly from a conversion record", async () => {
+		const environment = { ...shortLinkEnvironment(), ADMIN_USERNAME: "admin", ADMIN_PASSWORD: "password" };
+		const login = await app.request("/api/admin/login", { method: "POST", headers: { "Content-Type": "application/json", Origin: "http://localhost" }, body: JSON.stringify({ username: "admin", password: "password" }) }, environment);
+		const cookie = login.headers.get("Set-Cookie")?.split(";", 1)[0] ?? "";
+		const response = await app.request("/api/admin/blocked-sources", {
+			method: "POST",
+			headers: { "Content-Type": "application/json", Cookie: cookie, Origin: "http://localhost" },
+			body: JSON.stringify({ fingerprint: "a".repeat(43), hostname: "example.com", reason: "test" }),
+		}, environment);
+		expect(response.status).toBe(200);
+		expect(await response.json()).toMatchObject({ success: true, fingerprint: "a".repeat(43) });
+	});
+
 	it("converts pasted content through POST /api/convert", async () => {
 		const response = await app.request("/api/convert", {
 			method: "POST",

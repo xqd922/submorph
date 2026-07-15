@@ -9,17 +9,26 @@ export interface BlockedSource {
 	createdAt: string;
 }
 
+export interface BlockedSourceFilters { q?: string }
+
 export async function blockSource(
 	db: D1Database,
 	sourceHashKey: string,
 	input: { source: string; hostname?: string; reason?: string; actor: string },
 ): Promise<string> {
 	const fingerprint = await fingerprintSource(input.source, sourceHashKey);
+	await blockSourceFingerprint(db, { fingerprint, hostname: input.hostname, reason: input.reason, actor: input.actor });
+	return fingerprint;
+}
+
+export async function blockSourceFingerprint(
+	db: D1Database,
+	input: { fingerprint: string; hostname?: string; reason?: string; actor: string },
+): Promise<void> {
 	await db.prepare(`INSERT INTO blocked_sources (source_fingerprint, hostname, reason, actor, created_at)
 		VALUES (?, ?, ?, ?, ?) ON CONFLICT(source_fingerprint) DO UPDATE SET
 		hostname = excluded.hostname, reason = excluded.reason, actor = excluded.actor, created_at = excluded.created_at`)
-		.bind(fingerprint, input.hostname ?? null, input.reason ?? null, input.actor, new Date().toISOString()).run();
-	return fingerprint;
+		.bind(input.fingerprint, input.hostname ?? null, input.reason ?? null, input.actor, new Date().toISOString()).run();
 }
 
 export async function getBlockedSource(db: D1Database, sourceHashKey: string, source: string): Promise<BlockedSource | null> {
@@ -34,11 +43,15 @@ export async function unblockSource(db: D1Database, sourceFingerprint: string): 
 	return result.meta.changes > 0;
 }
 
-export async function listBlockedSources(db: D1Database, limit = 100, offset = 0): Promise<BlockedSource[]> {
+export async function listBlockedSources(db: D1Database, limit = 100, offset = 0, filters: BlockedSourceFilters = {}): Promise<{ items: BlockedSource[]; total: number }> {
+	const values: string[] = [];
+	const where = filters.q ? " WHERE hostname LIKE ? OR source_fingerprint LIKE ? OR reason LIKE ? OR actor LIKE ?" : "";
+	if (filters.q) { const q = `%${filters.q.slice(0, 100)}%`; values.push(q, q, q, q); }
+	const count = await db.prepare(`SELECT COUNT(*) total FROM blocked_sources${where}`).bind(...values).first<{ total: number }>();
 	const result = await db.prepare(`SELECT id, source_fingerprint, hostname, reason, actor, created_at
-		FROM blocked_sources ORDER BY id DESC LIMIT ? OFFSET ?`)
-		.bind(Math.min(500, Math.max(1, Math.trunc(limit))), Math.max(0, offset)).all<BlockedSourceRow>();
-	return result.results.map(mapRow);
+		FROM blocked_sources${where} ORDER BY id DESC LIMIT ? OFFSET ?`)
+		.bind(...values, Math.min(500, Math.max(1, Math.trunc(limit))), Math.max(0, offset)).all<BlockedSourceRow>();
+	return { items: result.results.map(mapRow), total: Number(count?.total ?? 0) };
 }
 
 interface BlockedSourceRow {

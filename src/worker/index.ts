@@ -5,6 +5,7 @@ import type { OutputTarget } from "./conversion/types";
 import {
 	createShortLink,
 	blockSource,
+	blockSourceFingerprint,
 	deleteShortLink,
 	getBlockedSource,
 	listAdminAudit,
@@ -17,7 +18,7 @@ import {
 	resolveShortLink,
 	setShortLinkEnabled,
 } from "./database";
-import { getCachedConversion, putCachedConversion } from "./platform/cache";
+import { getCachedConversion, purgeConversionCache, putCachedConversion } from "./platform/cache";
 import { convertSubscription } from "./platform/conversion";
 import { fingerprintSource } from "./platform/crypto";
 import {
@@ -135,29 +136,59 @@ app.post("/api/admin/logout", (context) => {
 app.get("/api/admin/overview", async (context) => {
 	const db = context.env.DB;
 	if (!db) return errorResponse(context, "STORAGE_UNAVAILABLE", "Database is not configured", 503);
-	const row = await db.prepare(`SELECT COUNT(*) total, SUM(success) successful,
+	const [row, recent, outputs, errors] = await Promise.all([
+		db.prepare(`SELECT COUNT(*) total, SUM(success) successful,
 		SUM(cache_hit) cache_hits, AVG(duration_ms) average_duration_ms,
 		SUM(CASE WHEN created_at >= datetime('now', '-1 day') THEN 1 ELSE 0 END) today
-		FROM conversion_events`).first<Record<string, number | null>>();
-	const recent = await db.prepare(`SELECT substr(created_at, 1, 10) day, COUNT(*) value FROM conversion_events
-		WHERE created_at >= datetime('now', '-7 day') GROUP BY day ORDER BY day`).all<{ day: string; value: number }>();
+		FROM conversion_events`).first<Record<string, number | null>>(),
+		db.prepare(`SELECT substr(created_at, 1, 10) day, COUNT(*) value FROM conversion_events
+			WHERE created_at >= datetime('now', '-7 day') GROUP BY day ORDER BY day`).all<{ day: string; value: number }>(),
+		db.prepare(`SELECT target, COUNT(*) count FROM conversion_events
+			WHERE created_at >= datetime('now', '-7 day') GROUP BY target ORDER BY count DESC LIMIT 6`).all<{ target: string; count: number }>(),
+		db.prepare(`SELECT error_code code, COUNT(*) count FROM conversion_events
+			WHERE success = 0 AND error_code IS NOT NULL AND created_at >= datetime('now', '-7 day')
+			GROUP BY error_code ORDER BY count DESC LIMIT 6`).all<{ code: string; count: number }>(),
+	]);
 	const total = Number(row?.total ?? 0), successful = Number(row?.successful ?? 0), cacheHits = Number(row?.cache_hits ?? 0);
 	return context.json({ todayConversions: Number(row?.today ?? 0), successRate: total ? Math.round(successful / total * 1000) / 10 : 0,
-		cacheHitRate: total ? Math.round(cacheHits / total * 1000) / 10 : 0, averageDuration: Math.round(Number(row?.average_duration_ms ?? 0)), trend: recent.results });
+		cacheHitRate: total ? Math.round(cacheHits / total * 1000) / 10 : 0, averageDuration: Math.round(Number(row?.average_duration_ms ?? 0)),
+		trend: recent.results, outputDistribution: outputs.results, recentErrors: errors.results });
 });
 
-app.get("/api/admin/conversions", async (context) => paged(context, await listConversionEvents(requireDb(context), pageSize(context), pageOffset(context))));
-app.get("/api/admin/links", async (context) => paged(context, await listShortLinks(requireDb(context), pageSize(context), pageOffset(context))));
-app.get("/api/admin/blocked-sources", async (context) => paged(context, await listBlockedSources(requireDb(context), pageSize(context), pageOffset(context))));
-app.get("/api/admin/audit", async (context) => paged(context, await listAdminAudit(requireDb(context), pageSize(context), pageOffset(context))));
+app.get("/api/admin/conversions", async (context) => paged(context, await listConversionEvents(requireDb(context), pageSize(context), pageOffset(context), {
+	q: context.req.query("q")?.trim(), target: context.req.query("target")?.trim(),
+	success: context.req.query("status") === "success" ? true : context.req.query("status") === "failed" ? false : undefined,
+	cacheHit: context.req.query("cache") === "hit" ? true : context.req.query("cache") === "miss" ? false : undefined,
+})));
+app.get("/api/admin/links", async (context) => paged(context, await listShortLinks(requireDb(context), pageSize(context), pageOffset(context), {
+	q: context.req.query("q")?.trim(), target: context.req.query("target")?.trim(),
+	enabled: context.req.query("status") === "enabled" ? true : context.req.query("status") === "disabled" ? false : undefined,
+})));
+app.get("/api/admin/blocked-sources", async (context) => paged(context, await listBlockedSources(requireDb(context), pageSize(context), pageOffset(context), { q: context.req.query("q")?.trim() })));
+app.get("/api/admin/audit", async (context) => paged(context, await listAdminAudit(requireDb(context), pageSize(context), pageOffset(context), { q: context.req.query("q")?.trim() })));
 
 app.post("/api/admin/blocked-sources", async (context) => {
 	const body = await readJsonObject(context); if (body instanceof Response) return body;
-	const source = typeof body.source === "string" ? body.source.trim() : "";
-	if (!source || !context.env.SOURCE_HASH_KEY) return errorResponse(context, "INVALID_INPUT", "source is required", 400);
-	const fingerprint = await blockSource(requireDb(context), context.env.SOURCE_HASH_KEY, { source, hostname: hostname(source), reason: typeof body.reason === "string" ? body.reason : undefined, actor: context.get("adminIdentity").actor });
-	await audit(context, "source.block", "blocked_source", fingerprint);
+	const source = typeof body.source === "string" ? body.source.trim() : "", suppliedFingerprint = typeof body.fingerprint === "string" ? body.fingerprint.trim() : "";
+	const reason = typeof body.reason === "string" ? body.reason.trim().slice(0, 500) : undefined;
+	const actor = context.get("adminIdentity").actor, sourceHostname = typeof body.hostname === "string" ? body.hostname.trim().slice(0, 255) : hostname(source);
+	let fingerprint: string;
+	if (source) {
+		if (!context.env.SOURCE_HASH_KEY) return errorResponse(context, "STORAGE_UNAVAILABLE", "Source hashing is not configured", 503);
+		fingerprint = await blockSource(requireDb(context), context.env.SOURCE_HASH_KEY, { source, hostname: sourceHostname, reason, actor });
+	} else if (/^[A-Za-z0-9_-]{43}$/.test(suppliedFingerprint)) {
+		fingerprint = suppliedFingerprint;
+		await blockSourceFingerprint(requireDb(context), { fingerprint, hostname: sourceHostname, reason, actor });
+	} else return errorResponse(context, "INVALID_INPUT", "source or fingerprint is required", 400);
+	await audit(context, "source.block", "blocked_source", fingerprint, { hostname: sourceHostname });
 	return context.json({ success: true, fingerprint });
+});
+
+app.post("/api/admin/cache/purge", async (context) => {
+	if (!context.env.SUBMORPH_STORE) return errorResponse(context, "STORAGE_UNAVAILABLE", "Cache is not configured", 503);
+	const deleted = await purgeConversionCache(context.env.SUBMORPH_STORE);
+	await audit(context, "cache.purge", "conversion_cache", "conversion", { deleted });
+	return context.json({ success: true, deleted });
 });
 
 app.patch("/api/admin/links/:id", async (context) => {
@@ -343,7 +374,7 @@ async function readJsonObject(context: Context<AppEnv>): Promise<Record<string, 
 
 function pageSize(context: Context<AppEnv>) { return Math.min(100, Math.max(1, Number(context.req.query("limit")) || 25)); }
 function pageOffset(context: Context<AppEnv>) { return (Math.max(1, Number(context.req.query("page")) || 1) - 1) * pageSize(context); }
-function paged(context: Context<AppEnv>, items: unknown[]) { const page = Math.max(1, Number(context.req.query("page")) || 1); return context.json({ items, page, totalPages: items.length < pageSize(context) ? page : page + 1, total: pageOffset(context) + items.length }); }
+function paged(context: Context<AppEnv>, result: { items: unknown[]; total: number }) { const page = Math.max(1, Number(context.req.query("page")) || 1); return context.json({ ...result, page, totalPages: Math.max(1, Math.ceil(result.total / pageSize(context))) }); }
 function hostname(source: string) { try { return new URL(source).hostname; } catch { return undefined; } }
 function clientFamily(userAgent = "") { if (SING_BOX_USER_AGENT.test(userAgent)) return "sing-box"; if (V2RAY_USER_AGENT.test(userAgent)) return "v2rayNG"; if (MIHOMO_USER_AGENT.test(userAgent)) return "Mihomo"; return "unknown"; }
 async function audit(context: Context<AppEnv>, action: string, targetType: string, targetId: string, metadata?: Record<string, unknown>) {

@@ -35,6 +35,17 @@ export async function putCachedConversion(store: KVNamespace, key: ConversionCac
 	return true;
 }
 
+export async function purgeConversionCache(store: KVNamespace): Promise<number> {
+	let cursor: string | undefined, deleted = 0;
+	do {
+		const page = await store.list({ prefix: "conversion:", cursor, limit: 1000 });
+		await Promise.all(page.keys.map((key) => store.delete(key.name)));
+		deleted += page.keys.length;
+		cursor = page.list_complete ? undefined : page.cursor;
+	} while (cursor);
+	return deleted;
+}
+
 export function isCompleteSuccess(result: CachedConversion): boolean {
 	return result.valid > 0 && result.rendered === result.valid && result.skipped === 0;
 }

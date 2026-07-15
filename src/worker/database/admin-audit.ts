@@ -8,6 +8,7 @@ export interface AdminAuditInput {
 }
 
 export interface AdminAuditRecord extends AdminAuditInput { id: number; createdAt: string }
+export interface AdminAuditFilters { q?: string }
 
 export async function recordAdminAudit(db: D1Database, input: AdminAuditInput): Promise<void> {
 	await db.prepare(`INSERT INTO admin_audit_log
@@ -16,14 +17,18 @@ export async function recordAdminAudit(db: D1Database, input: AdminAuditInput): 
 			input.metadata ? JSON.stringify(input.metadata) : null, input.createdAt ?? new Date().toISOString()).run();
 }
 
-export async function listAdminAudit(db: D1Database, limit = 100, offset = 0): Promise<AdminAuditRecord[]> {
+export async function listAdminAudit(db: D1Database, limit = 100, offset = 0, filters: AdminAuditFilters = {}): Promise<{ items: AdminAuditRecord[]; total: number }> {
+	const values: string[] = [];
+	const where = filters.q ? " WHERE actor_email LIKE ? OR action LIKE ? OR target_type LIKE ? OR target_id LIKE ? OR metadata LIKE ?" : "";
+	if (filters.q) { const q = `%${filters.q.slice(0, 100)}%`; values.push(q, q, q, q, q); }
+	const count = await db.prepare(`SELECT COUNT(*) total FROM admin_audit_log${where}`).bind(...values).first<{ total: number }>();
 	const result = await db.prepare(`SELECT id, actor_email, action, target_type, target_id, metadata, created_at
-		FROM admin_audit_log ORDER BY id DESC LIMIT ? OFFSET ?`)
-		.bind(Math.min(500, Math.max(1, Math.trunc(limit))), Math.max(0, offset)).all<AdminAuditRow>();
-	return result.results.map((row) => ({
+		FROM admin_audit_log${where} ORDER BY id DESC LIMIT ? OFFSET ?`)
+		.bind(...values, Math.min(500, Math.max(1, Math.trunc(limit))), Math.max(0, offset)).all<AdminAuditRow>();
+	return { items: result.results.map((row) => ({
 		id: row.id, actorEmail: row.actor_email, action: row.action, targetType: row.target_type,
 		targetId: row.target_id ?? undefined, metadata: parseMetadata(row.metadata), createdAt: row.created_at,
-	}));
+	})), total: Number(count?.total ?? 0) };
 }
 
 interface AdminAuditRow {
