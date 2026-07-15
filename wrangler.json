@@ -20,6 +20,24 @@
 			"database_id": "221bf55c-9836-4a7f-9884-e996828a318f"
 		}
 	],
+	"ratelimits": [
+		{
+			"name": "RATE_LIMITER",
+			"namespace_id": "92201",
+			"simple": {
+				"limit": 30,
+				"period": 60
+			}
+		},
+		{
+			"name": "LOGIN_RATE_LIMITER",
+			"namespace_id": "92202",
+			"simple": {
+				"limit": 5,
+				"period": 60
+			}
+		}
+	],
 	"routes": [
 		{
 			"pattern": "submorph.xqd.pp.ua",

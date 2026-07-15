@@ -13,7 +13,7 @@ SubMorph 是部署在 Cloudflare Workers 上的订阅转换服务，负责：
 3. 将不同协议转换为统一内部节点模型。
 4. 输出 Mihomo、Mihomo Provider、sing-box、v2rayNG 或浏览器预览格式。
 5. 提供稳定的加密短链接。
-6. 提供由 Cloudflare Access 保护的管理后台。
+6. 提供由用户名、密码和签名会话保护的管理后台。
 
 项目保持一个仓库、一个 Worker、一个部署。生产流量使用 Custom Domain，当前不依赖异常的 `xqd922.workers.dev` 子域。
 
@@ -30,8 +30,8 @@ SubMorph 是部署在 Cloudflare Workers 上的订阅转换服务，负责：
 - 根据 User-Agent 自动选择输出格式。
 - 成功结果 KV 缓存。
 - D1 转换统计和加密短链接。
-- Cloudflare Access 管理后台。
-- Turnstile、Rate Limiting、SSRF 防护和敏感信息脱敏。
+- 签名 HttpOnly 会话管理后台。
+- 登录限流、公共接口限流、SSRF 防护和敏感信息脱敏。
 
 ### 2.2 暂不实现
 
@@ -66,8 +66,8 @@ Cloudflare Worker
  │    └── Output Renderers
  ├── KV Conversion Cache
  ├── D1 Events / Links / Blocks / Audit
- ├── Cloudflare Access
- └── Turnstile / Rate Limiting
+ ├── Admin Session Authentication
+ └── Workers Rate Limiting
 ```
 
 ## 4. 目录规划
@@ -338,7 +338,7 @@ interface Renderer {
 - Cache purge。
 - Audit log 分页。
 
-所有管理路由必须验证 Cloudflare Access JWT；写操作还必须验证同源 `Origin`。
+所有管理路由必须验证签名会话 Cookie；写操作还必须验证同源 `Origin`。
 
 ## 14. 错误模型
 
@@ -423,8 +423,8 @@ conversion:{cacheSchemaVersion}:{sourceFingerprint}:{target}:{policyVersion}:{re
 ```text
 LINK_ENCRYPTION_KEY
 SOURCE_HASH_KEY
-CF_ACCESS_AUD
-TURNSTILE_SECRET_KEY
+ADMIN_USERNAME
+ADMIN_PASSWORD
 ```
 
 ## 18. 公共前端
@@ -471,12 +471,11 @@ TURNSTILE_SECRET_KEY
 
 ## 20. 滥用防护
 
-- `/sub` 和 `/s/:id` 供代理客户端调用，不要求 Turnstile。
-- `/api/links` 使用 Turnstile。
-- 转换接口起始限制建议为 60 次/分钟/IP。
-- 短链接创建建议为 10 次/分钟/IP。
+- `/sub`、`/s/:id` 和公共转换接口使用独立路由桶限流。
+- 管理登录限制为 5 次/分钟/IP。
+- 转换接口起始限制为 30 次/分钟/IP。
 - 相同来源优先使用 KV，减少对上游的重复请求。
-- 管理接口由 Cloudflare Access 保护。
+- 管理接口由签名、过期的 HttpOnly 会话保护。
 
 限流值上线后根据真实流量调整，不提前构建复杂配额系统。
 
@@ -491,7 +490,7 @@ X-Frame-Options: DENY
 Permissions-Policy: camera=(), microphone=(), geolocation=()
 ```
 
-公开页面与管理后台使用各自 CSP。Turnstile 所需的 `connect-src` 和 `frame-src` 只添加官方域名。
+公开页面与管理后台使用各自 CSP。
 
 ## 22. 测试计划
 
@@ -527,8 +526,6 @@ Mihomo fixture 必须通过固定版本 `mihomo -t -f`。sing-box fixture 必须
 ```text
 D1: submorph-db
 KV: submorph-conversion-cache
-Access Application: submorph-admin
-Turnstile site
 Workers Rate Limiting binding
 Custom Domain: submorph.xqd.pp.ua
 ```
@@ -594,11 +591,11 @@ Shadowsocks URI
 
 ### 阶段 7：短链接
 
-实现 AES-GCM、短 ID、创建、复用、访问、启停、删除、Turnstile 和限流。
+实现 AES-GCM、短 ID、创建、复用、访问、启停、删除和限流。
 
 ### 阶段 8：管理后台
 
-接入 Access JWT 验证并实现 Overview、Conversions、Links、Blocked、Audit 和 Cache purge。
+接入用户名密码与签名会话验证，并实现 Overview、Conversions、Links、Blocked、Audit 和 Cache purge。
 
 ### 阶段 9：补齐协议
 
@@ -629,9 +626,9 @@ Shadowsocks URI
 - D1 转换记录。
 - 加密短链接。
 - 来源封禁。
-- Cloudflare Access。
+- 管理员账号与签名会话。
 - 管理后台。
-- Turnstile 和 Rate Limiting。
+- 登录与公共接口 Rate Limiting。
 
 ### v1.0.0：完整首发
 

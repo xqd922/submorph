@@ -47,8 +47,8 @@ The application is one repository, one Cloudflare Worker, and one deployment.
 | Build | `@cloudflare/vite-plugin` + Vite |
 | Database | Cloudflare D1 |
 | Cache | Cloudflare KV |
-| Admin authentication | Cloudflare Access |
-| Abuse prevention | Turnstile + Workers Rate Limiting |
+| Admin authentication | Username/password + signed HttpOnly session |
+| Abuse prevention | Workers Rate Limiting |
 | Package manager | pnpm |
 | Tests | Vitest + Cloudflare Workers test integration |
 | Deployment | Wrangler / Workers Builds |
@@ -148,8 +148,8 @@ absent or `auto`, the server selects an output from the request User-Agent.
 | POST | `/api/admin/cache/purge` | Purge conversion cache |
 | GET | `/api/admin/audit` | Paginated administration audit log |
 
-All administration routes require Cloudflare Access. Mutating requests also
-require a same-origin `Origin` header.
+All administration routes require a valid signed administrator session.
+Mutating requests also require a same-origin `Origin` header.
 
 ## 7. Conversion Model
 
@@ -273,8 +273,8 @@ version. Default TTL is five minutes. Errors are not cached.
 - Redact URL query values, fragments, credentials, UUIDs, and passwords in logs.
 - Encrypt persisted short-link targets with AES-GCM using a Wrangler secret.
 - Fingerprint normalized source URLs with keyed HMAC for lookups and blocking.
-- Protect `/admin*` and `/api/admin*` with Cloudflare Access and verify its JWT.
-- Protect public write endpoints with Turnstile and rate limiting.
+- Protect `/api/admin*` with a signed, expiring, HttpOnly administrator session.
+- Rate limit administrator login and public conversion endpoints.
 - Set CSP, `X-Content-Type-Options`, `Referrer-Policy`, and frame restrictions.
 
 Required secrets and bindings:
@@ -284,9 +284,10 @@ DB                       D1 database
 CONVERSION_CACHE         KV namespace
 LINK_ENCRYPTION_KEY      Wrangler secret
 SOURCE_HASH_KEY          Wrangler secret
-CF_ACCESS_AUD            Wrangler secret
-TURNSTILE_SECRET_KEY     Wrangler secret
+ADMIN_USERNAME           Wrangler secret
+ADMIN_PASSWORD           Wrangler secret
 RATE_LIMITER             Rate Limiting binding
+LOGIN_RATE_LIMITER       Rate Limiting binding
 ASSETS                   Workers Assets binding
 ```
 
@@ -348,7 +349,7 @@ No real subscription credentials are committed as fixtures.
 
 ### Version 0.2
 
-- Administration APIs are unreachable without Cloudflare Access.
+- Administration APIs are unreachable without a valid administrator session.
 - D1 migrations apply locally and to a clean remote database.
 - Encrypted short links, cache, rate limiting, and audit tests pass.
 

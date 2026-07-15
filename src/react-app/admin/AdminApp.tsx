@@ -21,13 +21,13 @@ function readPage(payload: unknown, requestedPage: number): Page {
 	return { items: items ?? [], page: num(meta, "page", "currentPage") || requestedPage, totalPages: Math.max(1, num(meta, "totalPages", "pages", "pageCount") || 1), total: num(meta, "total", "count") || items?.length || 0 };
 }
 async function request(path: string, init?: RequestInit) {
-	const token = sessionStorage.getItem("submorph-admin-token") ?? "";
-	const response = await fetch(path, { ...init, headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}`, ...init?.headers } });
-	if (response.status === 401) { sessionStorage.removeItem("submorph-admin-token"); location.reload(); }
+	const response = await fetch(path, { ...init, headers: { "Content-Type": "application/json", ...init?.headers } });
+	if (response.status === 401) location.reload();
 	const payload: unknown = await response.json().catch(() => ({}));
 	if (!response.ok) { const root = object(payload), error = object(root.error); const message = text(error, "message") !== "-" ? text(error, "message") : text(root, "message", "error"); throw new Error(message !== "-" ? message : `请求失败（${response.status}）`); }
 	return payload;
 }
+async function logout() { await fetch("/api/admin/logout", { method: "POST" }); location.reload(); }
 function LoadingState() { return <div className="admin-state"><i className="admin-spinner" /><strong>正在加载工作区</strong><span>正在获取最新数据…</span></div>; }
 function EmptyState({ label }: { label: string }) { return <div className="admin-state"><b>0</b><strong>暂无{label}</strong><span>产生新活动后会自动显示在这里。</span></div>; }
 function ErrorState({ message, retry }: { message: string; retry: () => void }) { return <div className="admin-state error"><b>!</b><strong>无法加载当前视图</strong><span>{message}</span><button type="button" onClick={retry}>重试</button></div>; }
@@ -63,6 +63,6 @@ function PagedView({ view }: { view: Exclude<View, "overview"> }) {
 
 export function AdminApp() {
 	const [view, setView] = useState<View>("overview"), current = views.find((item) => item.id === view) ?? views[0];
-	return <div className="admin-shell"><aside className="admin-sidebar"><a className="admin-brand" href="/"><i />SubMorph <span>管理</span></a><nav aria-label="管理导航">{views.map((item) => <button type="button" className={view === item.id ? "active" : ""} aria-current={view === item.id ? "page" : undefined} key={item.id} onClick={() => setView(item.id)}><b aria-hidden="true">{item.mark}</b><span>{item.label}</span></button>)}</nav><div className="admin-identity"><i>管</i><span><strong>管理员</strong><small>Cloudflare Access</small></span><a href="/cdn-cgi/access/logout" aria-label="退出登录">退出</a></div></aside><main className="admin-main"><header className="admin-header"><div><small>SUBMORPH / 管理</small><h1>{current.label}</h1><p>监控订阅转换，并管理服务访问。</p></div><a href="/" target="_blank" rel="noreferrer">打开转换器</a></header><section className="admin-content">{view === "overview" ? <Overview /> : <PagedView view={view} />}</section></main></div>;
+	return <div className="admin-shell"><aside className="admin-sidebar"><a className="admin-brand" href="/"><i />SubMorph <span>管理</span></a><nav aria-label="管理导航">{views.map((item) => <button type="button" className={view === item.id ? "active" : ""} aria-current={view === item.id ? "page" : undefined} key={item.id} onClick={() => setView(item.id)}><b aria-hidden="true">{item.mark}</b><span>{item.label}</span></button>)}</nav><div className="admin-identity"><i>管</i><span><strong>管理员</strong><small>安全会话</small></span><button type="button" onClick={logout} aria-label="退出登录">退出</button></div></aside><main className="admin-main"><header className="admin-header"><div><small>SUBMORPH / 管理</small><h1>{current.label}</h1><p>监控订阅转换，并管理服务访问。</p></div><a href="/" target="_blank" rel="noreferrer">打开转换器</a></header><section className="admin-content">{view === "overview" ? <Overview /> : <PagedView view={view} />}</section></main></div>;
 }
 export default AdminApp;

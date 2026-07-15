@@ -50,8 +50,8 @@
 .admin-identity span { min-width: 0; display: grid; gap: 4px; }
 .admin-identity strong { font-size: 10px; font-weight: 600; }
 .admin-identity small { color: rgb(255 255 255 / 30%); font: 500 8px/1 var(--font-mono); }
-.admin-identity a { color: rgb(255 255 255 / 34%); font: 500 8px/1 var(--font-mono); text-transform: uppercase; }
-.admin-identity a:hover { color: white; }
+.admin-identity > button { padding: 0; border: 0; color: rgb(255 255 255 / 34%); background: transparent; font: 500 8px/1 var(--font-mono); text-transform: uppercase; }
+.admin-identity > button:hover { color: white; }
 
 .admin-main { min-width: 0; padding: 0 56px 70px; }
 .admin-header { min-height: 214px; display: flex; justify-content: space-between; align-items: flex-end; gap: 30px; padding: 52px 0 42px; border-bottom: 1px solid var(--hairline-strong); }
@@ -120,7 +120,7 @@
 	.admin-sidebar { padding-inline: 14px; }
 	.admin-brand { justify-content: center; font-size: 0; }
 	.admin-brand::before { content: "S_"; color: white; font: 400 20px/1 var(--font-display); }
-	.admin-brand span, .admin-sidebar nav span, .admin-identity span, .admin-identity a { display: none; }
+	.admin-brand span, .admin-sidebar nav span, .admin-identity span, .admin-identity > button { display: none; }
 	.admin-sidebar nav button { justify-content: center; }
 	.admin-sidebar nav b { width: auto; }
 	.admin-identity { display: flex; justify-content: center; }

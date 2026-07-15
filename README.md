@@ -55,11 +55,26 @@ preview
 
 ```powershell
 pnpm install
+Copy-Item .dev.vars.example .dev.vars
 pnpm run dev
 pnpm run test
 pnpm run lint
 pnpm run check
 ```
+
+## Production Security
+
+Set the administrator username and password as Worker secrets:
+
+```powershell
+pnpm exec wrangler secret put ADMIN_USERNAME
+pnpm exec wrangler secret put ADMIN_PASSWORD
+```
+
+Successful login creates a signed, `HttpOnly`, `SameSite=Strict` session cookie
+that expires after 12 hours. Login attempts are limited to five per minute;
+public conversion routes are limited to 30 requests per minute. Mutating
+administration requests also require a same-origin `Origin` header.
 
 ## Deployment
 
@@ -67,9 +82,7 @@ pnpm run check
 pnpm run deploy
 ```
 
-The Worker deploys to the Custom Domain configured in `wrangler.json`. The
-administrator token is stored outside the repository in
-`%USERPROFILE%\.submorph\admin-token.txt` on the deployment machine.
+The Worker deploys to the Custom Domain configured in `wrangler.json`.
 
 ## Project Documents
 

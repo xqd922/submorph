@@ -107,6 +107,35 @@ describe("worker routes", () => {
 		expect(await response.json()).toEqual({ error: { code: "UNSUPPORTED_TARGET", message: "target must be a string" } });
 	});
 
+	it("rejects public conversions when the rate limit is exhausted", async () => {
+		const RATE_LIMITER = { limit: vi.fn().mockResolvedValue({ success: false }) } as unknown as RateLimit;
+		const response = await app.request(`/sub?url=${encodeURIComponent(ss)}`, undefined, { RATE_LIMITER });
+		expect(response.status).toBe(429);
+		expect(response.headers.get("Retry-After")).toBe("60");
+	});
+
+	it("rate limits administrator login attempts", async () => {
+		const LOGIN_RATE_LIMITER = { limit: vi.fn().mockResolvedValue({ success: false }) } as unknown as RateLimit;
+		const response = await app.request("/api/admin/login", { method: "POST", headers: { "Content-Type": "application/json", Origin: "http://localhost" }, body: JSON.stringify({ username: "admin", password: "password" }) }, { LOGIN_RATE_LIMITER, ADMIN_PASSWORD: "password" });
+		expect(response.status).toBe(429);
+	});
+
+	it("uses a signed session and requires same-origin administration mutations", async () => {
+		const environment = { ...shortLinkEnvironment(), ADMIN_USERNAME: "admin", ADMIN_PASSWORD: "password" };
+		const login = await app.request("/api/admin/login", { method: "POST", headers: { "Content-Type": "application/json", Origin: "http://localhost" }, body: JSON.stringify({ username: "admin", password: "password" }) }, environment);
+		expect(login.status).toBe(200);
+		const cookie = login.headers.get("Set-Cookie")?.split(";", 1)[0] ?? "";
+		const session = await app.request("/api/admin/session", { headers: { Cookie: cookie } }, environment);
+		expect(session.status).toBe(200);
+		const headers = { "Content-Type": "application/json", Cookie: cookie };
+		const rejected = await app.request("/api/admin/links/demo", { method: "PATCH", headers, body: JSON.stringify({ enabled: false }) }, environment);
+		expect(rejected.status).toBe(403);
+		const accepted = await app.request("/api/admin/links/demo", { method: "PATCH", headers: { ...headers, Origin: "http://localhost" }, body: JSON.stringify({ enabled: false }) }, environment);
+		expect(accepted.status).toBe(200);
+		const logout = await app.request("/api/admin/logout", { method: "POST", headers: { Cookie: cookie, Origin: "http://localhost" } }, environment);
+		expect(logout.headers.get("Set-Cookie")).toContain("Max-Age=0");
+	});
+
 	it("converts pasted content through POST /api/convert", async () => {
 		const response = await app.request("/api/convert", {
 			method: "POST",

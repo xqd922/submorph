@@ -1,0 +1,5 @@
+# Local-only values. Copy this file to .dev.vars and replace the private values.
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD=replace-with-a-strong-password
+LINK_ENCRYPTION_KEY=base64-encoded-32-byte-key
+SOURCE_HASH_KEY=local-source-hash-key

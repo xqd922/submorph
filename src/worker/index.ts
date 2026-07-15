@@ -20,6 +20,16 @@ import {
 import { getCachedConversion, putCachedConversion } from "./platform/cache";
 import { convertSubscription } from "./platform/conversion";
 import { fingerprintSource } from "./platform/crypto";
+import {
+	authenticateAdmin,
+	clearAdminSession,
+	createAdminSession,
+	enforceRateLimit,
+	requireSameOrigin,
+	SecurityError,
+	type AdminIdentity,
+	type SecurityBindings,
+} from "./platform/security";
 import { isRemoteSource, loadRemoteSource, SourceError } from "./platform/source";
 
 const MAX_SOURCE_BYTES = 10 * 1024 * 1024;
@@ -38,15 +48,16 @@ type ConversionResult = {
 	filename?: string;
 };
 
-type Bindings = Env & {
+type Bindings = Env & SecurityBindings & {
 	DB?: D1Database;
 	SUBMORPH_STORE?: KVNamespace;
 	LINK_ENCRYPTION_KEY?: string;
 	SOURCE_HASH_KEY?: string;
-	ADMIN_TOKEN?: string;
 };
 
-const app = new Hono<{ Bindings: Bindings }>();
+type Variables = { adminIdentity: AdminIdentity };
+type AppEnv = { Bindings: Bindings; Variables: Variables };
+const app = new Hono<AppEnv>();
 
 app.use("*", secureHeaders({
 	referrerPolicy: "no-referrer",
@@ -55,6 +66,11 @@ app.use("*", secureHeaders({
 }));
 
 app.get("/api/health", (context) => context.json({ status: "ok", version: "1.0.0" }));
+
+app.use("/api/links", (context, next) => publicRateLimit(context, next, "links"));
+app.use("/api/convert", (context, next) => publicRateLimit(context, next, "convert"));
+app.use("/sub", (context, next) => publicRateLimit(context, next, "subscription"));
+app.use("/s/*", (context, next) => publicRateLimit(context, next, "subscription"));
 
 app.post("/api/links", async (context) => {
 	const body = await readJsonObject(context);
@@ -81,11 +97,37 @@ app.get("/s/:id", async (context) => {
 	return response;
 });
 
+app.use("/api/admin/login", (context, next) => publicRateLimit(context, next, "admin-login"));
+
 app.use("/api/admin/*", async (context, next) => {
-	const token = context.req.header("Authorization")?.replace(/^Bearer\s+/i, "") ?? context.req.header("X-Admin-Token");
-	if (!context.env.ADMIN_TOKEN || token !== context.env.ADMIN_TOKEN)
-		return errorResponse(context, "UNAUTHORIZED", "Administrator token required", 401);
+	if (!["GET", "HEAD", "OPTIONS"].includes(context.req.method)) {
+		try { requireSameOrigin(context.req.raw); }
+		catch (error) { return securityResponse(context, error); }
+	}
 	await next();
+});
+
+app.use("/api/admin/*", async (context, next) => {
+	if (context.req.path === "/api/admin/login" || context.req.path === "/api/admin/logout") return next();
+	try { context.set("adminIdentity", await authenticateAdmin(context.req.raw, context.env)); }
+	catch (error) { return securityResponse(context, error); }
+	await next();
+});
+
+app.post("/api/admin/login", async (context) => {
+	const body = await readJsonObject(context); if (body instanceof Response) return body;
+	try {
+		const session = await createAdminSession(context.req.raw, context.env, body.username, body.password);
+		context.header("Set-Cookie", session.cookie);
+		return context.json({ user: { username: session.identity.username } });
+	} catch (error) { return securityResponse(context, error); }
+});
+
+app.get("/api/admin/session", (context) => context.json({ user: { username: context.get("adminIdentity").username } }));
+
+app.post("/api/admin/logout", (context) => {
+	context.header("Set-Cookie", clearAdminSession(context.req.raw));
+	return context.json({ success: true });
 });
 
 app.get("/api/admin/overview", async (context) => {
@@ -111,7 +153,7 @@ app.post("/api/admin/blocked-sources", async (context) => {
 	const body = await readJsonObject(context); if (body instanceof Response) return body;
 	const source = typeof body.source === "string" ? body.source.trim() : "";
 	if (!source || !context.env.SOURCE_HASH_KEY) return errorResponse(context, "INVALID_INPUT", "source is required", 400);
-	const fingerprint = await blockSource(requireDb(context), context.env.SOURCE_HASH_KEY, { source, hostname: hostname(source), reason: typeof body.reason === "string" ? body.reason : undefined, actor: "token-admin" });
+	const fingerprint = await blockSource(requireDb(context), context.env.SOURCE_HASH_KEY, { source, hostname: hostname(source), reason: typeof body.reason === "string" ? body.reason : undefined, actor: context.get("adminIdentity").actor });
 	await audit(context, "source.block", "blocked_source", fingerprint);
 	return context.json({ success: true, fingerprint });
 });
@@ -178,7 +220,7 @@ app.onError((error, context) => {
 });
 
 async function handleConversion(
-	context: Context,
+	context: Context<AppEnv>,
 	source: string,
 	targetValue: string | undefined,
 ) {
@@ -237,7 +279,7 @@ function normalizeStoredTarget(target: string | undefined): string | null {
 	return requested === "clash" ? "mihomo" : requested;
 }
 
-function conversionResponse(context: Context, result: ConversionResult, duration: number) {
+function conversionResponse(context: Context<AppEnv>, result: ConversionResult, duration: number) {
 	context.header("Content-Type", result.contentType);
 	context.header("Cache-Control", "private, no-store");
 	context.header("X-SubMorph-Target", result.target);
@@ -251,7 +293,7 @@ function conversionResponse(context: Context, result: ConversionResult, duration
 	return context.body(result.content);
 }
 
-function errorResponse(context: Context, code: string, message: string, status: number) {
+function errorResponse(context: Context<AppEnv>, code: string, message: string, status: number) {
 	context.header("Cache-Control", "no-store");
 	return context.json({ error: { code, message } }, status as ContentfulStatusCode);
 }
@@ -260,31 +302,43 @@ function isConversionError(error: unknown): error is { code: string; message: st
 	return error instanceof Error && "code" in error && typeof (error as { code?: unknown }).code === "string";
 }
 
-function storage(context: Context<{ Bindings: Bindings }>) {
+function storage(context: Context<AppEnv>) {
 	const { DB: db, LINK_ENCRYPTION_KEY, SOURCE_HASH_KEY } = context.env;
 	return db && LINK_ENCRYPTION_KEY && SOURCE_HASH_KEY ? { db, LINK_ENCRYPTION_KEY, SOURCE_HASH_KEY } : null;
 }
 
-function requireDb(context: Context<{ Bindings: Bindings }>): D1Database {
+function requireDb(context: Context<AppEnv>): D1Database {
 	if (!context.env.DB) throw new SourceError("STORAGE_UNAVAILABLE", "Database is not configured", 503);
 	return context.env.DB;
 }
 
-async function readJsonObject(context: Context): Promise<Record<string, unknown> | Response> {
+async function readJsonObject(context: Context<AppEnv>): Promise<Record<string, unknown> | Response> {
 	try { const value: unknown = await context.req.json(); return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : errorResponse(context, "INVALID_INPUT", "JSON object required", 400); }
 	catch { return errorResponse(context, "INVALID_INPUT", "Valid JSON required", 400); }
 }
 
-function pageSize(context: Context) { return Math.min(100, Math.max(1, Number(context.req.query("limit")) || 25)); }
-function pageOffset(context: Context) { return (Math.max(1, Number(context.req.query("page")) || 1) - 1) * pageSize(context); }
-function paged(context: Context, items: unknown[]) { const page = Math.max(1, Number(context.req.query("page")) || 1); return context.json({ items, page, totalPages: items.length < pageSize(context) ? page : page + 1, total: pageOffset(context) + items.length }); }
+function pageSize(context: Context<AppEnv>) { return Math.min(100, Math.max(1, Number(context.req.query("limit")) || 25)); }
+function pageOffset(context: Context<AppEnv>) { return (Math.max(1, Number(context.req.query("page")) || 1) - 1) * pageSize(context); }
+function paged(context: Context<AppEnv>, items: unknown[]) { const page = Math.max(1, Number(context.req.query("page")) || 1); return context.json({ items, page, totalPages: items.length < pageSize(context) ? page : page + 1, total: pageOffset(context) + items.length }); }
 function hostname(source: string) { try { return new URL(source).hostname; } catch { return undefined; } }
 function clientFamily(userAgent = "") { if (SING_BOX_USER_AGENT.test(userAgent)) return "sing-box"; if (V2RAY_USER_AGENT.test(userAgent)) return "v2rayNG"; if (MIHOMO_USER_AGENT.test(userAgent)) return "Mihomo"; return "unknown"; }
-async function audit(context: Context<{ Bindings: Bindings }>, action: string, targetType: string, targetId: string, metadata?: Record<string, unknown>) {
-	if (context.env.DB) await recordAdminAudit(context.env.DB, { actorEmail: "token-admin", action, targetType, targetId, metadata });
+async function audit(context: Context<AppEnv>, action: string, targetType: string, targetId: string, metadata?: Record<string, unknown>) {
+	if (context.env.DB) await recordAdminAudit(context.env.DB, { actorEmail: context.get("adminIdentity")?.actor ?? "unknown", action, targetType, targetId, metadata });
 }
-function background(context: Context, promise: Promise<unknown>) {
+function background(context: Context<AppEnv>, promise: Promise<unknown>) {
 	try { context.executionCtx.waitUntil(promise); } catch { void promise.catch(() => undefined); }
+}
+
+async function publicRateLimit(context: Context<AppEnv>, next: () => Promise<void>, bucket: string) {
+	try { await enforceRateLimit(context.req.raw, context.env, bucket); }
+	catch (error) { return securityResponse(context, error); }
+	await next();
+}
+
+function securityResponse(context: Context<AppEnv>, error: unknown) {
+	if (!(error instanceof SecurityError)) throw error;
+	if (error.status === 429) context.header("Retry-After", "60");
+	return errorResponse(context, error.code, error.message, error.status);
 }
 
 export default app;
