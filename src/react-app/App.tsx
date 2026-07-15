@@ -21,7 +21,7 @@ function App() {
 	async function convert(event: FormEvent<HTMLFormElement>) {
 		event.preventDefault();
 		const input = source.trim();
-		if (!input) return setError("Please enter a subscription URL or paste subscription content.");
+		if (!input) return setError("请输入订阅地址，或粘贴订阅内容。");
 		setBusy(true); setError(""); setCopied(false); setSubscriptionUrl("");
 		try {
 			const response = await fetch("/api/links", {
@@ -30,11 +30,11 @@ function App() {
 				body: JSON.stringify({ source: input, target: "auto" }),
 			});
 			const body = await response.json() as LinkResponse;
-			if (!response.ok || !body.url) throw new Error(body.error?.message || "Could not create subscription link.");
+			if (!response.ok || !body.url) throw new Error(body.error?.message || "无法创建订阅链接。");
 			setSubscriptionUrl(body.url);
 			try { await navigator.clipboard.writeText(body.url); setCopied(true); window.setTimeout(() => setCopied(false), 1600); } catch { /* manual copy remains available */ }
 		} catch (caught) {
-			setError(caught instanceof Error ? caught.message : "Could not create subscription link.");
+			setError(caught instanceof Error ? caught.message : "无法创建订阅链接。");
 		} finally {
 			setBusy(false);
 		}
@@ -54,44 +54,44 @@ function App() {
 		<section className="cover">
 			<header className="site-header">
 				<a className="brand" href="#top">SubMorph<span>_</span></a>
-				<span className="edition">PUBLIC TOOL / 2026</span>
-				<nav aria-label="Primary navigation"><a href="#converter">Converter</a><a href="#principles">Principles</a><span className={`health ${health}`}><i />{health}</span></nav>
+				<span className="edition">公共工具 / 2026</span>
+				<nav aria-label="主导航"><a href="#converter">转换器</a><a href="#principles">设计原则</a><span className={`health ${health}`}><i />{health === "checking" ? "检查中" : health === "online" ? "在线" : "离线"}</span></nav>
 			</header>
 			<div className="cover-body">
-				<div className="cover-context"><span>PRIVATE INPUT</span><span>AUTOMATIC OUTPUT</span><span>UNIVERSAL LINK</span></div>
+				<div className="cover-context"><span>私密输入</span><span>自动输出</span><span>通用链接</span></div>
 				<div className="hero">
-					<p>Cloudflare-native subscription engineering.</p>
-					<h1><span>One</span> subscription.<br /><em>Ready everywhere.</em><i aria-hidden="true">_</i></h1>
+					<p>基于 Cloudflare 的订阅转换工具</p>
+					<h1><span>一个订阅。</span><br /><em>处处可用。</em><i aria-hidden="true">_</i></h1>
 				</div>
-				<div className="cover-summary"><p>Create one encrypted subscription link. SubMorph serves the right format when Mihomo, sing-box or v2rayNG asks for it.</p><a href="#converter">Begin conversion <span aria-hidden="true">&#8595;</span></a></div>
+				<div className="cover-summary"><p>生成一个加密订阅链接。当 Mihomo、sing-box 或 v2rayNG 请求时，SubMorph 会自动返回正确格式。</p><a href="#converter">开始转换 <span aria-hidden="true">&#8595;</span></a></div>
 			</div>
 		</section>
 
 		<main className="paper">
 			<section className="converter-section" id="converter">
-				<header className="section-heading"><div><span>01</span><small>CONVERTER</small></div><h2>Source in.<br /><em>Private link out.</em></h2><p>The browser never displays your node details. Input is encrypted at rest and the resulting link adapts to the requesting client.</p></header>
+				<header className="section-heading"><div><span>01</span><small>订阅转换</small></div><h2>输入订阅。<br /><em>生成私密链接。</em></h2><p>浏览器不会显示节点详情。输入内容会加密存储，生成的链接会自动适配发起请求的客户端。</p></header>
 				<div className="workspace">
 					<form className="panel form-panel" onSubmit={convert}>
-						<div className="title-row"><div><small>01.1 / INPUT</small><h3>Add your subscription</h3></div><div className="tabs" role="tablist" aria-label="Input mode"><button type="button" role="tab" aria-selected={mode === "url"} onClick={() => changeMode("url")}>URL</button><button type="button" role="tab" aria-selected={mode === "content"} onClick={() => changeMode("content")}>Paste</button></div></div>
-						<label htmlFor="source">{mode === "url" ? "Subscription URL or proxy URI" : "Subscription content"}</label>
-						{mode === "url" ? <input id="source" value={source} onChange={(event) => setSource(event.target.value)} placeholder="https://example.com/subscription" autoComplete="off" spellCheck="false" /> : <textarea id="source" value={source} onChange={(event) => setSource(event.target.value)} placeholder="Paste URI list, Base64 or Mihomo YAML..." rows={8} spellCheck="false" />}
-						<div className="assurances"><p><span aria-hidden="true">01</span><strong>Encrypted source</strong><small>The source is encrypted before storage.</small></p><p><span aria-hidden="true">02</span><strong>Automatic format</strong><small>One link works across supported clients.</small></p></div>
+						<div className="title-row"><div><small>01.1 / 输入</small><h3>添加你的订阅</h3></div><div className="tabs" role="tablist" aria-label="输入方式"><button type="button" role="tab" aria-selected={mode === "url"} onClick={() => changeMode("url")}>地址</button><button type="button" role="tab" aria-selected={mode === "content"} onClick={() => changeMode("content")}>粘贴</button></div></div>
+						<label htmlFor="source">{mode === "url" ? "订阅地址或代理 URI" : "订阅内容"}</label>
+						{mode === "url" ? <input id="source" value={source} onChange={(event) => setSource(event.target.value)} placeholder="https://example.com/subscription" autoComplete="off" spellCheck="false" /> : <textarea id="source" value={source} onChange={(event) => setSource(event.target.value)} placeholder="粘贴 URI 列表、Base64 或 Mihomo YAML…" rows={8} spellCheck="false" />}
+						<div className="assurances"><p><span aria-hidden="true">01</span><strong>加密源地址</strong><small>源内容在存储前会进行加密。</small></p><p><span aria-hidden="true">02</span><strong>自动选择格式</strong><small>一个链接适配所有受支持客户端。</small></p></div>
 						{error && <p className="error" role="alert">{error}</p>}
-						<button className="primary" disabled={busy}><span>{busy ? "Creating private link..." : "Create subscription link"}</span>{busy ? <i className="spinner" /> : <b aria-hidden="true">&#8594;</b>}</button>
+						<button className="primary" disabled={busy}><span>{busy ? "正在创建私密链接…" : "创建订阅链接"}</span>{busy ? <i className="spinner" /> : <b aria-hidden="true">&#8594;</b>}</button>
 					</form>
 					<aside className="panel result-panel" aria-live="polite">
-						<div className="title-row"><div><small>01.2 / OUTPUT</small><h3>{subscriptionUrl ? "Ready to import" : "Waiting for input"}</h3></div><b className={`ready ${subscriptionUrl ? "visible" : ""}`}>{subscriptionUrl ? "READY" : "IDLE"}</b></div>
-						{subscriptionUrl ? <div className="subscription-result"><p>Use this URL directly in your subscription client.</p><a className="subscription-url" href={subscriptionUrl} target="_blank" rel="noreferrer">{subscriptionUrl}</a><div className="tools"><span>ENCRYPTED / AUTO-DETECTING</span><div><button type="button" onClick={copy}>{copied ? "Copied" : "Copy URL"}</button><a href={subscriptionUrl} target="_blank" rel="noreferrer">Open &#8599;</a></div></div></div> : <div className="empty"><div className="signal" aria-hidden="true"><i /><i /><i /><i /></div><div><span>OUTPUT CHANNEL / STANDBY</span><h4>Your private link appears here.</h4><p>No node details or configuration content are exposed in the browser.</p></div></div>}
+						<div className="title-row"><div><small>01.2 / 输出</small><h3>{subscriptionUrl ? "可以导入了" : "等待输入"}</h3></div><b className={`ready ${subscriptionUrl ? "visible" : ""}`}>{subscriptionUrl ? "就绪" : "待机"}</b></div>
+						{subscriptionUrl ? <div className="subscription-result"><p>在订阅客户端中直接使用这个地址。</p><a className="subscription-url" href={subscriptionUrl} target="_blank" rel="noreferrer">{subscriptionUrl}</a><div className="tools"><span>已加密 / 自动识别</span><div><button type="button" onClick={copy}>{copied ? "已复制" : "复制地址"}</button><a href={subscriptionUrl} target="_blank" rel="noreferrer">打开 &#8599;</a></div></div></div> : <div className="empty"><div className="signal" aria-hidden="true"><i /><i /><i /><i /></div><div><span>输出通道 / 待机</span><h4>私密链接将在这里出现。</h4><p>浏览器不会暴露任何节点详情或配置内容。</p></div></div>}
 					</aside>
 				</div>
 			</section>
 
 			<section className="principles" id="principles">
-				<header className="section-heading"><div><span>02</span><small>PRINCIPLES</small></div><h2>One link.<br /><em>The right format.</em></h2><p>Three guarantees define every conversion. They are product rules, not optional presentation details.</p></header>
-				<div className="principle-list"><article><b>01</b><div><h3>Automatic fit</h3><p>The requesting client determines its output format automatically.</p></div><span>CLIENT &#8594; FORMAT</span></article><article><b>02</b><div><h3>Encrypted source</h3><p>The original subscription is encrypted inside SubMorph storage.</p></div><span>SOURCE &#8594; CIPHER</span></article><article><b>03</b><div><h3>No node exposure</h3><p>The public interface returns only the converted subscription link.</p></div><span>INPUT &#8594; LINK</span></article></div>
+				<header className="section-heading"><div><span>02</span><small>设计原则</small></div><h2>一个链接。<br /><em>自动适配格式。</em></h2><p>每次转换都遵循三项保证。它们是产品规则，而不是可有可无的展示细节。</p></header>
+				<div className="principle-list"><article><b>01</b><div><h3>自动适配</h3><p>根据发起请求的客户端，自动确定输出格式。</p></div><span>客户端 &#8594; 格式</span></article><article><b>02</b><div><h3>源内容加密</h3><p>原始订阅内容在 SubMorph 中加密存储。</p></div><span>订阅源 &#8594; 密文</span></article><article><b>03</b><div><h3>不暴露节点</h3><p>公共界面只返回转换后的订阅链接。</p></div><span>输入 &#8594; 链接</span></article></div>
 			</section>
 		</main>
-		<footer><a className="brand" href="#top">SubMorph<span>_</span></a><p>Private subscription conversion.</p><span>Cloudflare Workers / Edge runtime</span></footer>
+		<footer><a className="brand" href="#top">SubMorph<span>_</span></a><p>私密订阅转换工具</p><span>Cloudflare Workers / 边缘运行时</span></footer>
 	</div>;
 }
 
