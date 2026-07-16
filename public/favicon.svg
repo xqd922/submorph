@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title">
+	<title id="title">SubMorph</title>
+	<rect width="64" height="64" fill="#080808" />
+	<path d="M48 15H25c-7 0-11 4-11 10s5 9 12 9h12c7 0 12 3 12 9s-5 10-12 10H14" fill="none" stroke="#f5f5f5" stroke-width="7" stroke-linecap="square" stroke-linejoin="round" />
+	<path d="M43 53h9" fill="none" stroke="#7785d8" stroke-width="5" stroke-linecap="square" />
+</svg>
