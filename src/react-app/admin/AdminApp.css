@@ -89,18 +89,18 @@
 .overview-toolbar em { color: var(--success); font-size: 11px; font-style: normal; }
 
 .admin-table-wrap { overflow: auto; border: 1px solid var(--hairline-strong); background: rgb(255 255 255 / 68%); }
-.admin-table-wrap table { width: 100%; border-collapse: collapse; white-space: nowrap; font-size: 13px; }
-.admin-table-wrap th { padding: 14px 16px; color: var(--faint); background: rgb(25 26 27 / 2%); font: 600 11px/1 var(--font-mono); letter-spacing: .06em; text-align: left; }
-.admin-table-wrap td { padding: 16px; border-top: 1px solid var(--hairline); color: var(--muted); }
+.admin-table-wrap table { width: 100%; border-collapse: collapse; white-space: nowrap; font-size: 14px; }
+.admin-table-wrap th { padding: 14px 16px; color: var(--faint); background: rgb(25 26 27 / 2%); font: 600 12px/1 var(--font-mono); letter-spacing: .05em; text-align: left; }
+.admin-table-wrap td { padding: 17px 16px; border-top: 1px solid var(--hairline); color: var(--muted); }
 .admin-table-wrap tr { transition: background-color 140ms ease; }
 .admin-table-wrap tbody tr:hover { background: rgb(78 93 184 / 4%); }
-.admin-table-wrap td strong { display: block; color: var(--ink); font-size: 13px; }
-.admin-table-wrap td small { display: block; margin-top: 5px; color: var(--faint); font: 500 11px/1.2 var(--font-mono); }
-.admin-table-wrap code { color: var(--accent-deep); font: 600 11px/1 var(--font-mono); }
-.admin-shell .status { display: inline-block; padding: 5px 7px; border: 1px solid currentColor; border-radius: 0; background: transparent; font: 600 11px/1 var(--font-mono); letter-spacing: .02em; }
+.admin-table-wrap td strong { display: block; color: var(--ink); font-size: 14px; }
+.admin-table-wrap td small { display: block; margin-top: 6px; color: var(--faint); font: 500 12px/1.25 var(--font-mono); }
+.admin-table-wrap code { color: var(--accent-deep); font: 600 13px/1.2 var(--font-mono); }
+.admin-shell .status { display: inline-block; padding: 6px 8px; border: 1px solid currentColor; border-radius: 0; background: transparent; font: 600 12px/1 var(--font-mono); letter-spacing: .02em; }
 .admin-shell .status.good { color: var(--success); }.admin-shell .status.bad { color: var(--danger); }.admin-shell .status.muted { color: var(--faint); }
 .row-actions { display: flex; justify-content: flex-end; gap: 6px; }
-.row-actions button, .admin-state button, .admin-pagination button, .overview-toolbar button, .admin-filters button, .admin-create-form button { padding: 9px 11px; border: 1px solid var(--hairline-strong); border-radius: 0; color: var(--muted); background: transparent; font: 600 11px/1 var(--font-mono); transition: transform 140ms cubic-bezier(.23, 1, .32, 1), color 150ms ease, border-color 150ms ease, background-color 150ms ease; }
+.row-actions button, .admin-state button, .admin-pagination button, .overview-toolbar button, .admin-filters button, .admin-create-form button { padding: 10px 12px; border: 1px solid var(--hairline-strong); border-radius: 0; color: var(--muted); background: transparent; font: 600 12px/1 var(--font-mono); transition: transform 140ms cubic-bezier(.23, 1, .32, 1), color 150ms ease, border-color 150ms ease, background-color 150ms ease; }
 .row-actions button:hover, .admin-state button:hover, .admin-pagination button:hover:not(:disabled) { color: var(--ink); border-color: var(--accent); }
 .overview-toolbar button, .admin-filters button:not(.quiet), .admin-create-form button { color: white; border-color: var(--ink); background: var(--ink); }
 .overview-toolbar button:active:not(:disabled), .admin-filters button:active, .admin-create-form button:active:not(:disabled), .row-actions button:active { transform: scale(.97); }
