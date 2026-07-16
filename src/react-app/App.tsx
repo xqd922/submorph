@@ -59,7 +59,7 @@ function App() {
 
 		<main className="main-shell">
 			<section className="intro" aria-labelledby="intro-title">
-				<div><p className="eyebrow">SUBMORPH / 通用订阅</p><h1 id="intro-title">一个订阅，<em>处处可用。</em></h1></div>
+				<div><p className="eyebrow">SUBMORPH / 通用订阅</p><h1 id="intro-title">一个订阅，<br /><em>处处可用。</em></h1></div>
 				<div className="intro-copy"><p>输入订阅地址或内容，生成一个加密链接。Mihomo、sing-box 与 v2rayNG 会自动获得适合自己的格式。</p><span>加密存储 · 自动识别 · 不展示节点</span></div>
 			</section>
 

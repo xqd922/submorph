@@ -30,9 +30,9 @@
 
 .main-shell, .page > footer { width: min(1120px, calc(100% - 40px)); margin: auto; }
 .main-shell { height: 100%; min-height: 0; display: grid; grid-template-rows: auto minmax(0, 1fr); }
-.intro { padding: clamp(18px, 3.8vh, 40px) 0 clamp(18px, 3vh, 32px); display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(260px, .55fr); align-items: end; gap: clamp(36px, 6vw, 72px); }
+.intro { padding: clamp(22px, 3.6vh, 36px) 0 clamp(20px, 3.2vh, 30px); display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(320px, .62fr); align-items: end; gap: clamp(48px, 6vw, 84px); }
 .intro .eyebrow { margin-bottom: 13px; }
-.intro h1 { margin: 0; white-space: nowrap; font: 400 clamp(46px, 6.1vw, 76px)/.92 var(--font-display); letter-spacing: -.06em; }
+.intro h1 { margin: 0; font: 400 clamp(52px, 5.5vw, 80px)/.86 var(--font-display); letter-spacing: -.06em; }
 .intro h1 em { font-weight: 400; font-style: normal; }
 .intro-copy { padding-top: 18px; border-top: 1px solid var(--hairline-strong); }
 .intro-copy p { margin: 0 0 12px; color: var(--muted); font-size: 12px; line-height: 1.65; }
