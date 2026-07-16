@@ -1,4 +1,4 @@
-import { stringify as yaml } from "yaml";
+import { Document, isMap, isSeq } from "yaml";
 import type { OutputTarget, ProxyNode, TlsOptions, Transport } from "./types";
 import { renderAnyTlsMihomo, renderAnyTlsSingBox } from "./protocols/anytls";
 import { mihomoHysteria2, singboxHysteria2 } from "./protocols/hysteria2";
@@ -19,7 +19,7 @@ export function render(nodes: ProxyNode[], target: OutputTarget, isAirportSubscr
 	if (target === "v2rayng") return { content: base64(accepted.map((node) => uri(node as CoreNode)).join("\n")), contentType: "text/plain; charset=utf-8", nodes: accepted, skipped };
 	if (target === "singbox") return json(accepted, skipped, buildSingboxProfile(accepted.map(singbox)));
 	const proxies = accepted.map(mihomo), value = target === "mihomo-provider" ? { proxies } : buildMihomoProfile(accepted, proxies, isAirportSubscription);
-	return { content: yaml(value), contentType: "text/yaml; charset=utf-8", nodes: accepted, skipped };
+	return { content: mihomoYaml(value), contentType: "text/yaml; charset=utf-8", nodes: accepted, skipped };
 }
 
 function unsupported(node: ProxyNode, target: OutputTarget): string | undefined {
@@ -71,8 +71,13 @@ function uriTransport(value: Transport): { type: string; host?: string; path?: s
 function plugin(value?: string): Record<string, unknown> { if (!value) return {}; const [name, ...parts] = value.split(";"); return { plugin: name, ...(parts.length ? { "plugin-opts": Object.fromEntries(parts.map((part) => { const index = part.indexOf("="); return index < 0 ? [part, true] : [part.slice(0, index), part.slice(index + 1)]; })) } : {}) }; }
 function singboxPlugin(value?: string): Record<string, unknown> { if (!value) return {}; const [name, ...parts] = value.split(";"); return { plugin: name, ...(parts.length ? { plugin_opts: parts.join(";") } : {}) }; }
 function json(nodes: ProxyNode[], skipped: { node: ProxyNode; message: string }[], value: unknown): Rendered { return { content: JSON.stringify(value, null, 2), contentType: "application/json; charset=utf-8", nodes, skipped }; }
+function mihomoYaml(value: unknown): string {
+	const document = new Document(value), proxies = document.getIn(["proxies"], true);
+	if (isSeq(proxies)) for (const proxy of proxies.items) if (isMap(proxy)) proxy.flow = true;
+	return document.toString({ lineWidth: 0 });
+}
 function preview(nodes: ProxyNode[], skipped: { node: ProxyNode; message: string }[], isAirportSubscription: boolean): Rendered {
-	const clash = yaml(buildMihomoProfile(nodes, nodes.map(mihomo), isAirportSubscription));
+	const clash = mihomoYaml(buildMihomoProfile(nodes, nodes.map(mihomo), isAirportSubscription));
 	const singBox = JSON.stringify(buildSingboxProfile(nodes.map(singbox)), null, 2);
 	const content = '<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>SubMorph 配置预览</title><style>body{margin:0;background:#fafafa;color:#191a1b;font:14px/1.7 system-ui,sans-serif}main{width:min(1200px,calc(100% - 32px));margin:auto;padding:48px 0}h1,h2{font-family:Georgia,"Noto Serif SC",serif;font-weight:400}h1{font-size:48px}section{margin-top:36px}pre{padding:24px;overflow:auto;border:1px solid #191a1b33;background:#fff;font:12px/1.65 ui-monospace,monospace;white-space:pre}small{color:#191a1b80}</style></head><body><main><small>SUBMORPH / PREVIEW</small><h1>配置预览</h1><section><h2>Clash / Mihomo</h2><pre>' + escapeHtml(clash) + '</pre></section><section><h2>sing-box</h2><pre>' + escapeHtml(singBox) + '</pre></section></main></body></html>';
 	return { content, contentType: "text/html; charset=utf-8", nodes, skipped };

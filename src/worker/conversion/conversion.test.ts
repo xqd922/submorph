@@ -28,6 +28,7 @@ describe("convertSubscriptionText", () => {
 	it("renders four core protocols as a Mihomo provider", () => {
 		const result = convertSubscriptionText(lines.join("\n"), "mihomo-provider");
 		expect(result.rendered).toBe(4);
+		expect(result.content.split("\n").filter((line) => line.startsWith("  - {")).length).toBe(4);
 		expect(result.content).toContain("type: ss");
 		expect(result.content).toContain("type: vmess");
 		expect(result.content).toContain("type: vless");
